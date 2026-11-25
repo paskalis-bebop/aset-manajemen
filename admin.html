@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Admin — Registry Manajemen Aset</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./config.js"></script>
+<script src="./theme.js"></script>
+<script src="./gdrive.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --navy-deep:#10192B; --navy-mid:#182238;
+    --parchment:#F2ECDF; --parchment-dim:#E9E1CF;
+    --ink:#1C2230; --brass:#B98B4E; --brass-bright:#D3A465;
+    --ledger-green:#3F6B58; --slate:#8B93A3; --rust:#A64B3E;
+    --hairline:rgba(185,139,78,0.25);
+    --font-display:'Fraunces', Georgia, serif;
+    --font-body:'Inter', system-ui, sans-serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, monospace;
+    --surface:#FAF7F0;
+    --glass:var(--glass);
+    --line-soft:var(--line-soft);
+    --line-strong:rgba(185,139,78,0.40);
+    --line-slate:var(--line-slate);
+    --line-ink:var(--line-ink);
+    --line-ink-strong:var(--line-ink-strong);
+    --tint-brass:var(--line-soft);
+    --tint-green:rgba(63,107,88,0.12);
+    --tint-rust:var(--tint-rust);
+    --tint-rust-2:rgba(166,75,62,0.17);
+    --tint-rust-3:rgba(166,75,62,0.32);
+    --tint-slate:rgba(139,147,163,0.17);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--parchment); color:var(--ink); font-family:var(--font-body); min-height:100vh;}
+  input,textarea,select,button{font-family:var(--font-body);}
+  ::selection{background:var(--brass); color:var(--navy-deep);}
+
+  /* ---------- AUTH ---------- */
+  #authScreen{min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--navy-deep); padding:24px;}
+  .auth-card{background:var(--surface); border-radius:8px; width:100%; max-width:380px; padding:36px 32px; position:relative;}
+  .auth-card::before, .auth-card::after{content:""; position:absolute; width:14px; height:14px; border:2px solid var(--brass); top:10px; left:10px; border-right:none; border-bottom:none;}
+  .auth-card::after{left:auto; right:10px; top:auto; bottom:10px; border-left:none; border-top:none;}
+  .auth-mark{font-family:var(--font-mono); font-size:11px; letter-spacing:0.16em; color:var(--ledger-green); text-transform:uppercase;}
+  .auth-card h1{font-family:var(--font-display); font-size:22px; margin:8px 0 22px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; color:var(--slate); margin-bottom:6px; font-family:var(--font-mono);}
+  .field input{width:100%; padding:11px 12px; border:1px solid var(--line-ink); border-radius:4px; font-size:14px; background:var(--surface);}
+  .field input:focus-visible{outline:2px solid var(--brass);}
+  .btn{border:none; border-radius:4px; padding:11px 16px; font-weight:600; font-size:13.5px; cursor:pointer;}
+  .btn:focus-visible{outline:2px solid var(--navy-deep); outline-offset:2px;}
+  .btn-primary{background:var(--navy-deep); color:var(--on-deep);}
+  .btn-primary:hover{filter:brightness(1.15);}
+  .btn-secondary{background:none; border:1px solid var(--line-ink); color:var(--ink);}
+  .btn-secondary:hover{background:var(--parchment-dim);}
+  #authForm .btn-primary{width:100%;}
+  .btn-ghost{background:none; border:none; color:var(--ledger-green); text-decoration:underline; padding:6px 0; font-size:12.5px; cursor:pointer;}
+  .auth-switch{margin-top:16px; text-align:center; font-size:12.5px; color:var(--slate);}
+  .auth-msg{font-size:12.5px; padding:10px 12px; border-radius:4px; margin-bottom:14px; display:none; line-height:1.55;}
+  .auth-msg.show{display:block;}
+  .auth-msg.error{background:var(--tint-rust); color:var(--rust);}
+  .auth-msg.ok{background:var(--tint-green); color:var(--ledger-green);}
+
+  /* ---------- SHELL ---------- */
+  #appScreen{display:none; min-height:100vh; grid-template-columns:240px 1fr;}
+  #appScreen.show{display:grid;}
+  .side{background:var(--navy-deep); color:var(--on-deep); padding:28px 0;}
+  .side .brand{padding:0 24px 22px; border-bottom:1px solid var(--line-soft); margin-bottom:14px;}
+  .side .brand span{font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.14em; color:var(--brass-bright); text-transform:uppercase;}
+  .side .brand h1{font-family:var(--font-display); font-size:19px; margin:8px 0 0;}
+  .tabbtn{display:block; width:100%; background:none; border:none; color:var(--on-deep); text-align:left; padding:12px 24px; font-size:13.5px; cursor:pointer; font-weight:500;}
+  .tabbtn:hover{background:var(--navy-mid);}
+  .tabbtn.active{background:var(--navy-mid); border-left:3px solid var(--brass-bright);}
+  .tabbtn:focus-visible{outline:2px solid var(--brass-bright); outline-offset:-2px;}
+  .side-foot{padding:20px 24px 0; margin-top:20px; border-top:1px solid var(--line-soft);}
+  .side-foot a{color:var(--brass-bright); font-size:12px; text-decoration:none;}
+  .side-foot a:hover{text-decoration:underline;}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:20px 40px; border-bottom:1px solid var(--hairline); position:sticky; top:0; background:var(--parchment); z-index:20; gap:14px; flex-wrap:wrap;}
+  .topbar h2{font-family:var(--font-display); font-size:19px; margin:0; font-weight:600;}
+  .whoami{display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--slate);}
+  .role-chip{font-family:var(--font-mono); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; padding:3px 9px; border-radius:20px; font-weight:600;}
+  .role-admin{background:var(--tint-rust-2); color:var(--rust);}
+  .role-editor{background:var(--line-soft); color:var(--brass);}
+  .role-viewer{background:var(--tint-slate); color:var(--slate);}
+  .btn-logout{background:none; border:1px solid var(--line-ink); color:var(--ink); padding:7px 13px; border-radius:4px; font-size:12.5px; cursor:pointer;}
+  .btn-logout:hover{background:var(--parchment-dim);}
+
+  .panel{max-width:880px; margin:0 auto; padding:32px 40px 90px;}
+  .panel-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:12px; flex-wrap:wrap;}
+  .viewer-banner{background:var(--tint-green); border-left:3px solid var(--ledger-green); color:var(--ledger-green); font-size:12.5px; padding:10px 14px; border-radius:0 4px 4px 0; margin-bottom:18px;}
+  .hint{font-size:11.5px; color:var(--slate); line-height:1.6; margin:0 0 14px;}
+
+  .card{background:var(--surface); border:1px solid var(--hairline); border-radius:6px; padding:16px 18px; margin-bottom:10px;}
+  .card-row{display:flex; justify-content:space-between; align-items:flex-start; gap:14px;}
+  .card-code{font-family:var(--font-mono); font-size:10.5px; color:var(--brass); border:1px solid var(--line-strong); border-radius:3px; padding:2px 6px; display:inline-block; margin-bottom:6px;}
+  .card h3{font-family:var(--font-display); font-size:16px; margin:0 0 4px; font-weight:600;}
+  .card p{font-size:12.5px; color:var(--slate); margin:0; line-height:1.55;}
+  .card-actions{display:flex; gap:6px; flex:0 0 auto; flex-wrap:wrap;}
+  .icon-btn{background:none; border:1px solid var(--line-ink); border-radius:4px; padding:6px 10px; font-size:12px; cursor:pointer; color:var(--ink);}
+  .icon-btn:hover{background:var(--parchment-dim);}
+  .icon-btn.danger{color:var(--rust); border-color:var(--tint-rust-3);}
+
+  .form-box{background:var(--surface); border:1px solid var(--hairline); border-radius:6px; padding:22px; margin-bottom:18px;}
+  .form-box > label, .fieldrow label{display:block; font-size:11px; font-family:var(--font-mono); letter-spacing:0.04em; color:var(--slate); margin-bottom:6px; text-transform:uppercase;}
+  .form-box input[type=text], .form-box textarea, .form-box select{width:100%; padding:10px 12px; border:1px solid var(--line-ink); border-radius:4px; font-size:13.5px; margin-bottom:14px; background:var(--surface);}
+  .form-box textarea{resize:vertical; min-height:70px; line-height:1.6;}
+  .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:0 14px;}
+  .form-grid .full{grid-column:1 / -1;}
+  .form-actions{display:flex; gap:10px; margin-top:6px; position:sticky; bottom:0; background:var(--surface); padding:14px 0 2px; border-top:1px solid var(--hairline);}
+
+  /* ---------- EDITOR BLOK ---------- */
+  .blocks-zone{border:1px dashed var(--hairline); border-radius:6px; padding:16px; background:var(--parchment-dim); margin-bottom:16px;}
+  .blocks-zone > .zone-label{font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--slate); margin-bottom:12px;}
+  .block-card{background:var(--surface); border:1px solid var(--hairline); border-left:3px solid var(--brass); border-radius:5px; padding:14px 16px; margin-bottom:10px;}
+  .block-head{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;}
+  .block-type{font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--rust); font-weight:600;}
+  .block-ctrl{display:flex; gap:5px;}
+  .block-ctrl button{background:none; border:1px solid var(--line-ink); border-radius:3px; width:27px; height:26px; cursor:pointer; font-size:12px; color:var(--ink); padding:0;}
+  .block-ctrl button:hover{background:var(--parchment-dim);}
+  .block-ctrl button.danger{color:var(--rust);}
+  .block-card input[type=text], .block-card textarea, .block-card select{width:100%; padding:9px 11px; border:1px solid var(--line-ink); border-radius:4px; font-size:13.5px; margin-bottom:9px; background:var(--surface); font-family:var(--font-body);}
+  .block-card textarea{resize:vertical; min-height:64px; line-height:1.6;}
+  .block-card label{display:block; font-size:10.5px; font-family:var(--font-mono); color:var(--slate); margin-bottom:5px; text-transform:uppercase;}
+  .subitem{display:grid; grid-template-columns:1fr auto; gap:8px; align-items:start; padding:10px; background:var(--parchment-dim); border-radius:4px; margin-bottom:8px;}
+  .subitem .fields{min-width:0;}
+  .subitem input, .subitem textarea{margin-bottom:6px !important;}
+  .subitem .rm{background:none; border:1px solid var(--tint-rust-3); color:var(--rust); border-radius:3px; width:28px; height:28px; cursor:pointer; font-size:13px; padding:0;}
+  .add-sub{background:none; border:1px dashed var(--line-ink-strong); border-radius:4px; padding:7px 12px; font-size:12px; cursor:pointer; color:var(--ledger-green); font-weight:600;}
+  .add-sub:hover{background:var(--parchment-dim);}
+
+  .add-block-bar{display:flex; flex-wrap:wrap; gap:7px; margin-top:6px;}
+  .add-block-bar button{background:var(--surface); border:1px solid var(--hairline); border-radius:20px; padding:8px 14px; font-size:12px; cursor:pointer; color:var(--ink); font-weight:500;}
+  .add-block-bar button:hover{background:var(--navy-deep); color:var(--on-deep); border-color:var(--navy-deep);}
+
+  table{width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--hairline); border-radius:6px; overflow:hidden;}
+  th, td{text-align:left; padding:12px 16px; font-size:13px; border-bottom:1px solid var(--hairline);}
+  th{font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--slate); background:var(--parchment-dim);}
+  tr:last-child td{border-bottom:none;}
+  select.role-select{padding:6px 10px; border-radius:4px; border:1px solid var(--line-ink); font-size:12.5px;}
+  .badges{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px;}
+  .badge{display:inline-flex; align-items:center; font-family:var(--font-mono); font-size:10px; letter-spacing:0.04em; padding:3px 8px; border-radius:20px; text-decoration:none;}
+  .badge.on{background:var(--tint-green); color:var(--ledger-green);}
+  .badge.off{background:var(--tint-slate); color:var(--slate);}
+  .badge.link{background:var(--tint-rust); color:var(--rust);}
+  .badge.link:hover{background:var(--tint-rust-2);}
+  .opt-box{background:var(--parchment-dim); border-radius:5px; padding:13px 15px; margin-bottom:15px;}
+  .check-row{display:flex; gap:11px; align-items:flex-start; cursor:pointer; font-size:13.5px; line-height:1.55; text-transform:none; font-family:var(--font-body); letter-spacing:0; color:var(--ink);}
+  .check-row input[type=checkbox]{margin-top:3px; width:16px; height:16px; accent-color:var(--ledger-green); flex:0 0 auto;}
+  .check-row small{color:var(--slate); font-size:11.5px; line-height:1.5;}
+  /* ---------- TEMA ---------- */
+  .theme-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(228px, 1fr)); gap:11px; margin-bottom:6px;}
+  .theme-card{background:var(--surface); border:1px solid var(--hairline); border-radius:6px; padding:14px; text-align:left; cursor:pointer; display:flex; flex-direction:column; gap:5px; transition:border-color 0.15s ease, box-shadow 0.15s ease;}
+  .theme-card:hover{border-color:var(--brass);}
+  .theme-card.sel{border-color:var(--rust); box-shadow:0 0 0 2px var(--tint-rust-2);}
+  .theme-card:focus-visible{outline:2px solid var(--brass); outline-offset:2px;}
+  .swatches{display:flex; gap:4px; margin-bottom:5px;}
+  .swatches i{width:22px; height:22px; border-radius:4px; border:1px solid rgba(0,0,0,0.12); display:block;}
+  .tc-name{font-size:13.5px; font-weight:600; color:var(--ink);}
+  .tc-desc{font-size:11.5px; color:var(--slate); line-height:1.5;}
+
+  .custom-zone{background:var(--parchment-dim); border-radius:6px; padding:16px; margin-top:12px;}
+  .cf-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:12px;}
+  .cf label{display:block; font-size:10.5px; font-family:var(--font-mono); color:var(--slate); text-transform:uppercase; margin-bottom:5px; letter-spacing:0.04em;}
+  .cf-row{display:flex; gap:7px; align-items:center;}
+  .cf-row input[type=color]{width:38px; height:34px; padding:2px; border:1px solid var(--line-ink); border-radius:4px; background:var(--surface); cursor:pointer; flex:0 0 auto;}
+  .cf-row input[type=text]{margin-bottom:0 !important; font-family:var(--font-mono); font-size:12px;}
+
+  .preview-box{margin-top:26px; border:1px solid var(--hairline); border-radius:6px; overflow:hidden;}
+  .pv-label{font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.12em; text-transform:uppercase; color:var(--slate); padding:10px 14px; background:var(--parchment-dim); border-bottom:1px solid var(--hairline);}
+  .pv-body{display:grid; grid-template-columns:150px 1fr; min-height:150px;}
+  .pv-side{background:var(--navy-deep); padding:16px 14px; display:flex; flex-direction:column; gap:6px;}
+  .pv-mark{font-family:var(--font-mono); font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--brass-bright);}
+  .pv-brand{font-family:var(--font-display); font-size:15px; color:var(--on-deep); font-weight:600; line-height:1.25;}
+  .pv-main{background:var(--parchment); padding:18px 20px;}
+  .pv-eyebrow{font-family:var(--font-mono); font-size:9.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ledger-green);}
+  .pv-main h4{font-family:var(--font-display); font-size:19px; margin:6px 0 8px; color:var(--ink); font-weight:600;}
+  .pv-main p{font-size:13px; color:var(--ink); line-height:1.65; margin:0 0 10px; font-family:var(--font-body);}
+  .pv-note{display:inline-block; font-size:11px; color:var(--rust); border:1px solid var(--rust); border-radius:3px; padding:3px 9px; font-family:var(--font-mono);}
+
+  /* ---------- UNGGAH BERKAS ---------- */
+  .link-with-upload{display:flex; gap:8px; align-items:stretch; margin-bottom:9px;}
+  .link-with-upload input{margin-bottom:0 !important; flex:1; min-width:0;}
+  .btn-upload{flex:0 0 auto; background:var(--navy-deep); color:var(--on-deep); border:none; border-radius:4px; padding:0 14px; font-size:12.5px; font-weight:600; cursor:pointer; white-space:nowrap;}
+  .btn-upload:hover{filter:brightness(1.18);}
+  .btn-upload:focus-visible{outline:2px solid var(--brass); outline-offset:2px;}
+
+  .upload-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px;}
+  .up-zone{border:1px dashed var(--line-strong); border-radius:6px; padding:18px 16px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:7px; background:var(--parchment-dim);}
+  .up-icon{font-family:var(--font-mono); font-size:15px; color:var(--brass); width:34px; height:34px; border:1px solid var(--line-strong); border-radius:5px; display:flex; align-items:center; justify-content:center;}
+  .up-zone b{font-size:13.5px; color:var(--ink);}
+  .up-zone small{font-size:11px; color:var(--slate); font-family:var(--font-mono); min-height:15px;}
+  .up-zone .btn{padding:8px 13px; font-size:12.5px; margin-top:3px;}
+
+  #uploadProgress{margin-top:14px;}
+  .up-row{display:flex; align-items:center; gap:12px; padding:11px 13px; background:var(--surface); border:1px solid var(--hairline); border-radius:5px; margin-bottom:8px;}
+  .up-row.done{border-color:var(--ledger-green);}
+  .up-row.failed{border-color:var(--rust);}
+  .up-info{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;}
+  .up-info b{font-size:13px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .up-info span{font-size:11px; color:var(--slate); font-family:var(--font-mono);}
+  .up-bar{flex:0 0 130px; height:6px; background:var(--tint-slate); border-radius:4px; overflow:hidden;}
+  .up-bar i{display:block; height:100%; background:var(--ledger-green); transition:width 0.25s ease;}
+  .up-row.failed .up-bar i{background:var(--rust);}
+  .up-pct{flex:0 0 auto; font-family:var(--font-mono); font-size:11px; color:var(--slate); min-width:64px; text-align:right;}
+
+  .warn-box{background:var(--tint-rust); border-left:3px solid var(--rust); border-radius:0 5px 5px 0; padding:15px 18px; margin-bottom:18px;}
+  .warn-box b{font-size:13px; color:var(--rust); display:block; margin-bottom:7px;}
+  .warn-box ul{margin:0 0 8px; padding-left:18px;}
+  .warn-box li{font-size:12.5px; color:var(--ink); line-height:1.65; margin-bottom:4px;}
+  .warn-box p{font-size:12px; color:var(--slate); line-height:1.6; margin:0;}
+  .warn-box code{font-family:var(--font-mono); font-size:11.5px; background:var(--tint-slate); padding:1px 5px; border-radius:3px;}
+  .ok-box{background:var(--tint-green); border-left:3px solid var(--ledger-green); border-radius:0 5px 5px 0; padding:13px 18px; margin-bottom:18px; font-size:12.5px; color:var(--ledger-green); line-height:1.6;}
+
+  /* ---------- AKUN SAYA ---------- */
+  .acct-card{background:var(--navy-deep); border-radius:6px; padding:20px 22px; margin-bottom:18px;}
+  .acct-label{font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--brass-bright); margin-bottom:14px;}
+  .acct-rows{display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px;}
+  .acct-rows > div{display:flex; flex-direction:column; gap:4px;}
+  .acct-rows span{font-size:11px; color:var(--slate); font-family:var(--font-mono); text-transform:uppercase; letter-spacing:0.05em;}
+  .acct-rows b{font-size:14px; color:var(--on-deep); font-weight:600; word-break:break-word;}
+
+  .note-box{background:var(--parchment-dim); border-left:3px solid var(--brass); border-radius:0 5px 5px 0; padding:15px 18px; margin-top:18px;}
+  .note-box b{font-size:13px; color:var(--ink); display:block; margin-bottom:6px;}
+  .note-box p{font-size:12.5px; color:var(--ink); line-height:1.65; margin:0 0 8px;}
+  .note-box ul{margin:0; padding-left:18px;}
+  .note-box li{font-size:12.5px; color:var(--ink); line-height:1.65; margin-bottom:5px;}
+  .note-box li:last-child{margin-bottom:0;}
+
+  #recoveryScreen{min-height:100vh; align-items:center; justify-content:center; background:var(--navy-deep); padding:24px;}
+  #recoveryScreen[style*="flex"]{display:flex;}
+
+  .form-box input[type=password]{width:100%; padding:10px 12px; border:1px solid var(--line-ink); border-radius:4px; font-size:13.5px; margin-bottom:14px; background:var(--surface);}
+  #panelAkun .auth-msg{margin:2px 0 12px;}
+  #userForm .auth-msg{margin:6px 0 14px;}
+  /* penyesuaian mode gelap */
+  html[data-mode="dark"] .btn-primary{background:var(--brass); color:#0C1A22;}
+  html[data-mode="dark"] .btn-primary:hover{filter:brightness(1.08);}
+  html[data-mode="dark"] .btn-upload{background:var(--brass); color:#0C1A22;}
+  html[data-mode="dark"] .tabbtn.active{background:var(--surface);}
+  html[data-mode="dark"] .acct-card{background:var(--surface);}
+  html[data-mode="dark"] .acct-rows b{color:var(--ink);}
+  html[data-mode="dark"] .pv-side{background:var(--deep);}
+
+  .modebtn{display:inline-flex; align-items:center; gap:7px; background:var(--surface);
+    border:1px solid var(--line-ink); border-radius:6px; padding:7px 12px; font-size:12.5px;
+    cursor:pointer; color:var(--ink); font-family:var(--font-body);}
+  .modebtn:hover{border-color:var(--brass);}
+  .modebtn:focus-visible{outline:2px solid var(--brass); outline-offset:2px;}
+  .modebtn [data-icon]{font-size:13px; line-height:1;}
+
+  .empty-note{color:var(--slate); font-size:13px; font-style:italic;}
+
+  @media (max-width:820px){
+    #appScreen{grid-template-columns:1fr;}
+    .form-grid{grid-template-columns:1fr;}
+    .panel, .topbar{padding-left:20px; padding-right:20px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= AUTH ================= -->
+<div id="authScreen">
+  <div class="auth-card">
+    <span class="auth-mark">Registry Internal</span>
+    <h1 id="authTitle">Masuk ke Panel Admin</h1>
+    <div class="auth-msg" id="authMsg"></div>
+    <form id="authForm">
+      <div class="field"><label>User atau Email</label><input type="text" id="authEmail" required autocomplete="username" placeholder="Administrator"></div>
+      <div class="field"><label>Kata sandi</label><input type="password" id="authPassword" required autocomplete="current-password" minlength="6"></div>
+      <button class="btn btn-primary" type="submit" id="authSubmit">Masuk</button>
+    </form>
+    <div class="auth-switch">Akun dibuatkan oleh Administrator melalui panel Kelola Pengguna.</div>
+  </div>
+</div>
+
+<!-- ================= PASANG SANDI BARU (dari tautan reset) ================= -->
+<div id="recoveryScreen" style="display:none;">
+  <div class="auth-card">
+    <span class="auth-mark">Registry Internal</span>
+    <h1>Pasang Kata Sandi Baru</h1>
+    <p style="font-size:12.5px; color:var(--slate); line-height:1.6; margin:0 0 18px;">Masukkan kata sandi baru untuk akun Anda.</p>
+    <div class="auth-msg" id="recMsg"></div>
+    <form id="recForm">
+      <div class="field"><label>Kata sandi baru</label><input type="password" id="recPass" required minlength="6" autocomplete="new-password"></div>
+      <div class="field"><label>Ulangi kata sandi baru</label><input type="password" id="recPass2" required minlength="6" autocomplete="new-password"></div>
+      <button class="btn btn-primary" type="submit">Simpan Kata Sandi</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="appScreen">
+  <aside class="side">
+    <div class="brand"><span>Registry Internal</span><h1>Panel Admin</h1></div>
+    <button class="tabbtn active" data-tab="perikop">Konten Perikop</button>
+    <button class="tabbtn" data-tab="halaman">Konten Halaman</button>
+    <button class="tabbtn" data-tab="video">Video &amp; Playlist</button>
+    <button class="tabbtn" data-tab="dokumen">Dokumen Referensi</button>
+    <button class="tabbtn" data-tab="pengguna" id="tabPenggunaBtn" style="display:none;">Kelola Pengguna</button>
+    <button class="tabbtn" data-tab="tema" id="tabTemaBtn" style="display:none;">Tema Situs</button>
+    <button class="tabbtn" data-tab="beranda" id="tabBerandaBtn" style="display:none;">Tampilan Beranda</button>
+    <button class="tabbtn" data-tab="berkas" id="tabBerkasBtn" style="display:none;">Berkas &amp; Unggahan</button>
+    <button class="tabbtn" data-tab="akun">Akun Saya</button>
+    <div class="side-foot"><a href="./index.html" target="_blank">↗ Buka situs publik</a></div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <h2 id="panelTitle">Konten Perikop</h2>
+      <div class="whoami">
+        <button class="modebtn" id="modeBtn"><span data-icon>☾</span><span data-label>Gelap</span></button>
+        <span id="whoamiEmail"></span>
+        <span class="role-chip" id="whoamiRole"></span>
+        <button class="btn-logout" id="logoutBtn">Keluar</button>
+      </div>
+    </div>
+
+    <!-- ===== PERIKOP ===== -->
+    <div class="panel" id="panelPerikop">
+      <div class="viewer-banner" id="bannerPerikop" style="display:none;">Anda masuk sebagai viewer — mode lihat-saja.</div>
+      <div class="panel-head">
+        <p class="hint" style="margin:0;">Perikop tampil di halaman utama (beranda) situs publik.</p>
+        <button class="btn btn-primary" id="addSectionBtn" style="display:none;">+ Tambah Perikop</button>
+      </div>
+      <div id="sectionForm"></div>
+      <div id="sectionList"><p class="empty-note">Memuat…</p></div>
+    </div>
+
+    <!-- ===== HALAMAN ===== -->
+    <div class="panel" id="panelHalaman" style="display:none;">
+      <div class="viewer-banner" id="bannerHalaman" style="display:none;">Anda masuk sebagai viewer — mode lihat-saja.</div>
+      <div class="panel-head">
+        <p class="hint" style="margin:0;">Halaman terpisah yang diakses lewat tautan dari perikop di beranda.</p>
+        <button class="btn btn-primary" id="addPageBtn" style="display:none;">+ Tambah Halaman</button>
+      </div>
+      <div id="pageForm"></div>
+      <div id="pageList"><p class="empty-note">Memuat…</p></div>
+    </div>
+
+    <!-- ===== VIDEO ===== -->
+    <div class="panel" id="panelVideo" style="display:none;">
+      <div class="viewer-banner" id="bannerVideo" style="display:none;">Anda masuk sebagai viewer — mode lihat-saja.</div>
+      <div class="panel-head">
+        <p class="hint" style="margin:0;">Urutan daftar menentukan urutan tayang di situs publik.</p>
+        <button class="btn btn-primary" id="addVideoBtn" style="display:none;">+ Tambah Video</button>
+      </div>
+      <div id="videoForm"></div>
+      <div id="videoList"><p class="empty-note">Memuat…</p></div>
+    </div>
+
+    <!-- ===== DOKUMEN REFERENSI ===== -->
+    <div class="panel" id="panelDokumen" style="display:none;">
+      <div class="viewer-banner" id="bannerDokumen" style="display:none;">Anda masuk sebagai viewer — mode lihat-saja.</div>
+      <div class="panel-head">
+        <p class="hint" style="margin:0;">Dokumen PDF yang bisa dibaca langsung di situs. Urutan daftar menentukan urutan tampil.</p>
+        <button class="btn btn-primary" id="addDocBtn" style="display:none;">+ Tambah Dokumen</button>
+      </div>
+      <div id="docForm"></div>
+      <div id="docList"><p class="empty-note">Memuat…</p></div>
+    </div>
+
+    <!-- ===== PENGGUNA ===== -->
+    <div class="panel" id="panelPengguna" style="display:none;">
+      <div class="panel-head">
+        <p class="hint" style="margin:0;">Buat akun baru dan atur hak aksesnya. Perubahan peran berlaku seketika.</p>
+        <button class="btn btn-primary" id="addUserBtn">+ Tambah Pengguna</button>
+      </div>
+      <div id="userForm"></div>
+      <table>
+        <thead><tr><th>User</th><th>Email</th><th>Hak Akses</th><th>Bergabung</th><th>Aksi</th></tr></thead>
+        <tbody id="usersTableBody"></tbody>
+      </table>
+      <div class="note-box">
+        <b>Mengganti kata sandi / email pengguna lain</b>
+        <p>Demi keamanan, kata sandi dan email pengguna lain tidak dapat diubah langsung dari sini — hal itu memerlukan kunci rahasia database yang tidak boleh disimpan di dalam halaman web. Yang tersedia:</p>
+        <ul>
+          <li><b>Kata sandi</b> — klik <i>Kirim reset sandi</i>. Pengguna menerima email berisi tautan untuk memasang kata sandi barunya sendiri.</li>
+          <li><b>Email</b> — pengguna dapat menggantinya sendiri di tab <i>Akun Saya</i> setelah masuk. Bila terpaksa, Administrator dapat mengubahnya lewat Supabase Dashboard → Authentication → Users.</li>
+          <li><b>Menghapus akun</b> — lewat Supabase Dashboard → Authentication → Users. Dari panel ini, akses dicabut dengan menurunkan hak akses menjadi Viewer.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ===== TAMPILAN BERANDA ===== -->
+    <div class="panel" id="panelBeranda" style="display:none;">
+      <p class="hint">Mengatur bagian pembuka beranda situs publik — judul besar, kalimat pengantar, dan kartu siklus hidup di sebelahnya.</p>
+      <div id="berandaEditor"></div>
+    </div>
+
+    <!-- ===== BERKAS & UNGGAHAN ===== -->
+    <div class="panel" id="panelBerkas" style="display:none;">
+      <div id="gdriveStatus"></div>
+
+      <div class="form-box" id="driveConfigBox">
+        <label style="margin-bottom:10px;">Pengaturan Google Drive</label>
+        <label>OAuth Client ID Google</label>
+        <input type="text" id="cfg_client_id" placeholder="xxxxxxxx.apps.googleusercontent.com">
+        <p class="hint" style="margin-top:-8px;">Diperoleh dari Google Cloud Console. Langkah lengkapnya ada di PANDUAN-SETUP.md bagian Pembaruan v7.</p>
+
+        <div class="form-grid">
+          <div><label>ID Folder Drive — Video</label><input type="text" id="cfg_folder_video" placeholder="tempel ID folder"></div>
+          <div><label>ID Folder Drive — Gambar</label><input type="text" id="cfg_folder_image" placeholder="tempel ID folder"></div>
+          <div class="full"><label>ID Folder Drive — Dokumen</label><input type="text" id="cfg_folder_document" placeholder="tempel ID folder"></div>
+        </div>
+        <p class="hint" style="margin-top:-8px;">ID folder adalah bagian akhir alamat folder Drive: <code>drive.google.com/drive/folders/<b>ID-INI</b></code>. Boleh dikosongkan — berkas akan masuk ke Drive utama pengunggah. Ketiga folder boleh sama atau berbeda.</p>
+
+        <div id="cfg_msg" class="auth-msg"></div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="saveDriveConfig()">Simpan Pengaturan</button>
+          <button class="btn btn-secondary" onclick="testDriveAuth()">Uji Izin Google</button>
+        </div>
+      </div>
+
+      <div class="form-box">
+        <label style="margin-bottom:10px;">Unggah Berkas Baru</label>
+        <div class="upload-grid">
+          <div class="up-zone" data-kind="video">
+            <span class="up-icon">▶</span>
+            <b>Video</b>
+            <small id="upFolderVideo">folder belum diatur</small>
+            <button class="btn btn-secondary" onclick="pickAndUpload('video')">Pilih Berkas Video</button>
+          </div>
+          <div class="up-zone" data-kind="image">
+            <span class="up-icon">▤</span>
+            <b>Gambar</b>
+            <small id="upFolderImage">folder belum diatur</small>
+            <button class="btn btn-secondary" onclick="pickAndUpload('image')">Pilih Berkas Gambar</button>
+          </div>
+          <div class="up-zone" data-kind="document">
+            <span class="up-icon">PDF</span>
+            <b>Dokumen</b>
+            <small id="upFolderDocument">folder belum diatur</small>
+            <button class="btn btn-secondary" onclick="pickAndUpload('document')">Pilih Berkas Dokumen</button>
+          </div>
+        </div>
+        <div id="uploadProgress"></div>
+      </div>
+
+      <div class="panel-head" style="margin-top:26px;">
+        <div>
+          <label style="font-family:var(--font-mono); font-size:11px; letter-spacing:0.04em; color:var(--slate); text-transform:uppercase;">Pustaka Berkas</label>
+          <p class="hint" style="margin:6px 0 0;">Inventaris seluruh berkas, termasuk yang sebelumnya ditempel manual.</p>
+        </div>
+        <select id="assetFilter" onchange="renderAssetList()" style="max-width:190px; padding:8px 10px; border:1px solid var(--line-ink); border-radius:4px; font-size:13px; background:var(--surface);">
+          <option value="">Semua jenis</option>
+          <option value="video">Video</option>
+          <option value="image">Gambar</option>
+          <option value="document">Dokumen</option>
+        </select>
+      </div>
+      <div id="assetList"><p class="empty-note">Memuat…</p></div>
+    </div>
+
+    <!-- ===== AKUN SAYA ===== -->
+    <div class="panel" id="panelAkun" style="display:none;">
+      <div class="acct-card">
+        <div class="acct-label">Identitas Akun</div>
+        <div class="acct-rows">
+          <div><span>Nama User</span><b id="acctUsername">—</b></div>
+          <div><span>Email saat ini</span><b id="acctEmail">—</b></div>
+          <div><span>Hak akses</span><b id="acctRole">—</b></div>
+        </div>
+      </div>
+
+      <div class="form-box">
+        <label style="margin-bottom:10px;">Ganti Kata Sandi</label>
+        <div class="form-grid">
+          <div class="full"><label>Kata sandi saat ini</label><input type="password" id="pw_current" autocomplete="current-password"></div>
+          <div><label>Kata sandi baru</label><input type="password" id="pw_new" autocomplete="new-password" placeholder="minimal 6 karakter"></div>
+          <div><label>Ulangi kata sandi baru</label><input type="password" id="pw_confirm" autocomplete="new-password"></div>
+        </div>
+        <div id="pw_msg" class="auth-msg"></div>
+        <div class="form-actions">
+          <button class="btn btn-primary" id="pw_save" onclick="changeOwnPassword()">Simpan Kata Sandi</button>
+        </div>
+      </div>
+
+      <div class="form-box">
+        <label style="margin-bottom:10px;">Ganti Email</label>
+        <div class="form-grid">
+          <div><label>Email baru</label><input type="text" id="em_new" placeholder="email.baru@perusahaan.co.id"></div>
+          <div><label>Kata sandi saat ini</label><input type="password" id="em_pass" autocomplete="current-password"></div>
+        </div>
+        <p class="hint">Demi keamanan, Supabase akan mengirim tautan konfirmasi ke email baru (dan, bila pengaturan "Secure email change" aktif, juga ke email lama). Email baru berlaku setelah tautan tersebut diklik.</p>
+        <div id="em_msg" class="auth-msg"></div>
+        <div class="form-actions">
+          <button class="btn btn-primary" id="em_save" onclick="changeOwnEmail()">Kirim Permintaan Ganti Email</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TEMA ===== -->
+    <div class="panel" id="panelTema" style="display:none;">
+      <p class="hint">Perubahan tema berlaku untuk seluruh pengunjung situs. Pratinjau di bawah diperbarui seketika; klik Simpan agar tersimpan permanen.</p>
+      <div id="themeEditor"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ================= KONEKSI ================= */
+let supabaseClient = null;
+try {
+  if (window.SUPABASE_URL && !window.SUPABASE_URL.includes("GANTI-DENGAN") && window.supabase) {
+    const cleanUrl = String(window.SUPABASE_URL).trim().replace(/\/+$/, "");
+    const cleanKey = String(window.SUPABASE_ANON_KEY).trim();
+    supabaseClient = window.supabase.createClient(cleanUrl, cleanKey);
+  }
+} catch (e) { console.error('Gagal membuat koneksi Supabase:', e); }
+
+if (window.applyTheme) window.applyTheme(window.DEFAULT_THEME, window.getThemeMode());
+if (supabaseClient && window.loadTheme) window.loadTheme(supabaseClient);
+
+let currentProfile = null;
+let SECTIONS = [], PAGES = [], VIDEOS = [], DOCS = [], ASSETS = [];
+let DRIVE_CFG = { google_client_id:'', drive_folder_video:'', drive_folder_image:'', drive_folder_document:'' };
+
+const authScreen = document.getElementById('authScreen');
+const appScreen = document.getElementById('appScreen');
+const authMsg = document.getElementById('authMsg');
+
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function canEdit(){ return currentProfile && (currentProfile.role === 'admin' || currentProfile.role === 'editor'); }
+function isAdmin(){ return currentProfile && currentProfile.role === 'admin'; }
+function showAuthMsg(text, type){ authMsg.textContent = text; authMsg.className = 'auth-msg show ' + type; }
+
+if (!supabaseClient){
+  showAuthMsg('Supabase belum dikonfigurasi. Lengkapi config.js terlebih dahulu.', 'error');
+}
+
+/* ================= AUTH ================= */
+document.getElementById('authForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!supabaseClient) return;
+  const identifier = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  authMsg.className = 'auth-msg';
+  try{
+    let email = identifier;
+    /* Jika yang diketik bukan email, cari emailnya berdasarkan nama User */
+    if (!identifier.includes('@')){
+      const { data, error: rpcErr } = await supabaseClient.rpc('email_for_username', { uname: identifier });
+      if (rpcErr) throw rpcErr;
+      if (!data) throw new Error('Nama User tidak ditemukan. Periksa kembali penulisannya.');
+      email = data;
+    }
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  } catch(err){ showAuthMsg(err.message || 'Terjadi kesalahan.', 'error'); }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async () => { await supabaseClient.auth.signOut(); });
+
+if (supabaseClient){
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'PASSWORD_RECOVERY' || checkRecoveryMode()) return;
+    if (session && session.user) await loadProfileAndShowApp(session.user);
+    else { authScreen.style.display = 'flex'; appScreen.classList.remove('show'); }
+  });
+}
+
+async function loadProfileAndShowApp(user){
+  const { data: profile, error } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
+  if (error || !profile){ showAuthMsg('Profil tidak ditemukan. Coba keluar dan masuk kembali.', 'error'); return; }
+  currentProfile = profile;
+  authScreen.style.display = 'none';
+  appScreen.classList.add('show');
+  document.getElementById('whoamiEmail').textContent = profile.username || profile.email || user.email;
+  const chip = document.getElementById('whoamiRole');
+  chip.textContent = profile.role;
+  chip.className = 'role-chip role-' + profile.role;
+
+  const editable = canEdit();
+  ['addSectionBtn','addPageBtn','addVideoBtn','addDocBtn'].forEach(id => {
+    document.getElementById(id).style.display = editable ? 'inline-block' : 'none';
+  });
+  ['bannerPerikop','bannerHalaman','bannerVideo','bannerDokumen'].forEach(id => {
+    document.getElementById(id).style.display = editable ? 'none' : 'block';
+  });
+  document.getElementById('tabPenggunaBtn').style.display = isAdmin() ? 'block' : 'none';
+  document.getElementById('tabTemaBtn').style.display = isAdmin() ? 'block' : 'none';
+  document.getElementById('tabBerandaBtn').style.display = canEdit() ? 'block' : 'none';
+  document.getElementById('tabBerkasBtn').style.display = canEdit() ? 'block' : 'none';
+  document.getElementById('addUserBtn').style.display = isAdmin() ? 'inline-block' : 'none';
+
+  fillAccountInfo();
+  if (window.initModeToggle) window.initModeToggle(document.getElementById('modeBtn'), () => {
+    if (themeState) renderThemeEditor();
+  });
+  await refreshAll();
+  if (canEdit()){ await loadDriveConfig(); await loadAssets(); await loadHero(); }
+  if (isAdmin()){
+    loadUsers();
+    themeState = await window.loadTheme(supabaseClient);
+    renderThemeEditor();
+  }
+}
+
+async function refreshAll(){
+  const [s, p, v, d] = await Promise.all([
+    supabaseClient.from('sections').select('*').order('sort_order', { ascending: true }),
+    supabaseClient.from('pages').select('*').order('sort_order', { ascending: true }),
+    supabaseClient.from('videos').select('*').order('sort_order', { ascending: true }),
+    supabaseClient.from('documents').select('*').order('sort_order', { ascending: true })
+  ]);
+  SECTIONS = s.data || []; PAGES = p.data || []; VIDEOS = v.data || []; DOCS = d.data || [];
+  renderSectionList(); renderPageList(); renderVideoList(); renderDocList();
+}
+
+/* ================= TAB ================= */
+const PANELS = { perikop:'panelPerikop', halaman:'panelHalaman', video:'panelVideo', dokumen:'panelDokumen', pengguna:'panelPengguna', tema:'panelTema', beranda:'panelBeranda', berkas:'panelBerkas', akun:'panelAkun' };
+const TITLES = { perikop:'Konten Perikop', halaman:'Konten Halaman', video:'Video & Playlist', dokumen:'Dokumen Referensi', pengguna:'Kelola Pengguna', tema:'Tema Situs', beranda:'Tampilan Beranda', berkas:'Berkas & Unggahan', akun:'Akun Saya' };
+document.querySelectorAll('.tabbtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tabbtn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    Object.entries(PANELS).forEach(([k, id]) => {
+      document.getElementById(id).style.display = (k === tab) ? 'block' : 'none';
+    });
+    document.getElementById('panelTitle').textContent = TITLES[tab];
+  });
+});
+
+/* =========================================================
+   EDITOR BLOK — dipakai bersama oleh Perikop & Halaman
+   ========================================================= */
+const BLOCK_LABELS = {
+  paragraph:'Paragraf', list:'Daftar Poin', callout:'Catatan / Callout',
+  images:'Galeri Gambar', accordion:'Harmonika', external_link:'Tautan URL Lain',
+  page_link:'Tautan ke Konten Halaman'
+};
+
+let blockState = [];       // blok yang sedang diedit
+let blockAllowPageLink = true;
+
+function newBlock(type){
+  switch(type){
+    case 'paragraph': return { type, text:'' };
+    case 'list': return { type, items:[['','']] };
+    case 'callout': return { type, label:'Catatan', text:'' };
+    case 'images': return { type, layout:'half', items:[{url:'',caption:''},{url:'',caption:''}] };
+    case 'accordion': return { type, items:[{title:'',content:'',page_id:'',link_label:''}] };
+    case 'external_link': return { type, url:'', label:'Buka tautan' };
+    case 'page_link': return { type, page_id:'', label:'Baca materi selengkapnya' };
+  }
+}
+
+window.blkUpdate = function(i, field, value){ blockState[i][field] = value; };
+window.blkUpdateSub = function(i, j, field, value){
+  const b = blockState[i];
+  if (b.type === 'list'){ b.items[j][field === 'label' ? 0 : 1] = value; }
+  else { b.items[j][field] = value; }
+  if (field === 'page_id') drawBlocks();
+};
+window.blkAddSub = function(i){
+  const b = blockState[i];
+  if (b.type === 'list') b.items.push(['','']);
+  else if (b.type === 'images') b.items.push({url:'',caption:''});
+  else if (b.type === 'accordion') b.items.push({title:'',content:'',page_id:'',link_label:''});
+  drawBlocks();
+};
+window.blkRemoveSub = function(i, j){ blockState[i].items.splice(j,1); drawBlocks(); };
+window.blkMove = function(i, dir){
+  const j = i + dir;
+  if (j < 0 || j >= blockState.length) return;
+  [blockState[i], blockState[j]] = [blockState[j], blockState[i]];
+  drawBlocks();
+};
+window.blkRemove = function(i){
+  if (!confirm('Hapus blok ini?')) return;
+  blockState.splice(i,1); drawBlocks();
+};
+window.blkAdd = function(type){ blockState.push(newBlock(type)); drawBlocks(); };
+
+/* Unggah gambar langsung ke baris gambar tertentu di editor blok */
+window.uploadForImage = function(i, j){
+  window.uploadFor('image', a => {
+    const link = 'https://drive.google.com/file/d/' + a.drive_file_id + '/view';
+    blockState[i].items[j].url = link;
+    if (!blockState[i].items[j].caption) blockState[i].items[j].caption = a.name;
+    drawBlocks();
+  });
+};
+
+function drawBlocks(){
+  const zone = document.getElementById('blocksZone');
+  if (!zone) return;
+
+  const cards = blockState.map((b, i) => {
+    let fields = '';
+
+    if (b.type === 'paragraph'){
+      fields = `<label>Isi paragraf</label>
+        <textarea rows="3" oninput="blkUpdate(${i},'text',this.value)">${esc(b.text)}</textarea>`;
+    }
+
+    else if (b.type === 'callout'){
+      fields = `<label>Label</label>
+        <input type="text" value="${esc(b.label || 'Catatan')}" oninput="blkUpdate(${i},'label',this.value)">
+        <label>Isi catatan</label>
+        <textarea rows="2" oninput="blkUpdate(${i},'text',this.value)">${esc(b.text)}</textarea>`;
+    }
+
+    else if (b.type === 'external_link'){
+      fields = `<label>Teks tautan</label>
+        <input type="text" value="${esc(b.label)}" oninput="blkUpdate(${i},'label',this.value)">
+        <label>Alamat URL</label>
+        <input type="text" value="${esc(b.url)}" placeholder="https://..." oninput="blkUpdate(${i},'url',this.value)">`;
+    }
+
+    else if (b.type === 'page_link'){
+      const opts = PAGES.map(p => `<option value="${esc(p.id)}" ${p.id === b.page_id ? 'selected' : ''}>${esc(p.title)}</option>`).join('');
+      fields = `<label>Teks tautan</label>
+        <input type="text" value="${esc(b.label)}" oninput="blkUpdate(${i},'label',this.value)">
+        <label>Menuju halaman</label>
+        <select onchange="blkUpdate(${i},'page_id',this.value)">
+          <option value="">— pilih halaman —</option>${opts}
+        </select>
+        ${PAGES.length ? '' : '<p class="hint" style="margin:-6px 0 0;">Belum ada Konten Halaman. Buat dulu di tab "Konten Halaman".</p>'}`;
+    }
+
+    else if (b.type === 'list'){
+      fields = `<label>Poin daftar</label>` + b.items.map((pair, j) => `
+        <div class="subitem"><div class="fields">
+          <input type="text" value="${esc(pair[0])}" placeholder="Label (mis. Cakupan)" oninput="blkUpdateSub(${i},${j},'label',this.value)">
+          <input type="text" value="${esc(pair[1])}" placeholder="Keterangan" oninput="blkUpdateSub(${i},${j},'text',this.value)">
+        </div><button class="rm" onclick="blkRemoveSub(${i},${j})" title="Hapus poin">&times;</button></div>`).join('')
+        + `<button class="add-sub" onclick="blkAddSub(${i})">+ Tambah poin</button>`;
+    }
+
+    else if (b.type === 'images'){
+      const lay = b.layout === 'full' ? 'full' : 'half';
+      fields = `<label>Lebar tampilan gambar</label>
+        <select onchange="blkUpdate(${i},'layout',this.value)">
+          <option value="half" ${lay==='half'?'selected':''}>Separuh halaman — 2 gambar bersebelahan (default)</option>
+          <option value="full" ${lay==='full'?'selected':''}>Penuh satu halaman — 1 gambar per baris</option>
+        </select>
+        <label>Daftar gambar (di ponsel selalu menumpuk ke bawah)</label>` + b.items.map((img, j) => `
+        <div class="subitem"><div class="fields">
+          <div class="link-with-upload">
+            <input type="text" id="imgurl-${i}-${j}" value="${esc(img.url)}" placeholder="Tautan gambar atau tautan Google Drive" oninput="blkUpdateSub(${i},${j},'url',this.value)">
+            <button type="button" class="btn-upload" onclick="uploadForImage(${i},${j})">&uarr; Unggah</button>
+          </div>
+          <input type="text" value="${esc(img.caption)}" placeholder="Keterangan gambar (opsional)" oninput="blkUpdateSub(${i},${j},'caption',this.value)">
+        </div><button class="rm" onclick="blkRemoveSub(${i},${j})" title="Hapus gambar">&times;</button></div>`).join('')
+        + `<button class="add-sub" onclick="blkAddSub(${i})">+ Tambah gambar</button>`;
+    }
+
+    else if (b.type === 'accordion'){
+      fields = `<label>Poin harmonika (diklik untuk membuka detail)</label>` + b.items.map((it, j) => {
+        const pgOpts = PAGES.map(p => `<option value="${esc(p.id)}" ${p.id === it.page_id ? 'selected' : ''}>${esc(p.title)}</option>`).join('');
+        return `
+        <div class="subitem"><div class="fields">
+          <input type="text" value="${esc(it.title)}" placeholder="Judul poin" oninput="blkUpdateSub(${i},${j},'title',this.value)">
+          <textarea rows="3" placeholder="Detail deskripsi (satu paragraf per baris)" oninput="blkUpdateSub(${i},${j},'content',this.value)">${esc(it.content)}</textarea>
+          <select onchange="blkUpdateSub(${i},${j},'page_id',this.value)">
+            <option value="">— tanpa tautan halaman (opsional) —</option>${pgOpts}
+          </select>
+          ${it.page_id ? `<input type="text" value="${esc(it.link_label || '')}" placeholder="Teks tautan (kosongkan = pakai judul halaman)" oninput="blkUpdateSub(${i},${j},'link_label',this.value)">` : ''}
+        </div><button class="rm" onclick="blkRemoveSub(${i},${j})" title="Hapus poin">&times;</button></div>`;
+      }).join('')
+        + `<button class="add-sub" onclick="blkAddSub(${i})">+ Tambah poin</button>`;
+    }
+
+    return `<div class="block-card">
+      <div class="block-head">
+        <span class="block-type">${i+1}. ${BLOCK_LABELS[b.type] || b.type}</span>
+        <div class="block-ctrl">
+          <button onclick="blkMove(${i},-1)" title="Naikkan" ${i===0?'disabled':''}>&uarr;</button>
+          <button onclick="blkMove(${i},1)" title="Turunkan" ${i===blockState.length-1?'disabled':''}>&darr;</button>
+          <button class="danger" onclick="blkRemove(${i})" title="Hapus blok">&times;</button>
+        </div>
+      </div>
+      ${fields}
+    </div>`;
+  }).join('');
+
+  const types = ['paragraph','list','callout','images','accordion','external_link'];
+  if (blockAllowPageLink) types.push('page_link');
+
+  zone.innerHTML = `
+    <div class="zone-label">Susunan Konten — urutan blok di bawah = urutan tampil di situs</div>
+    ${cards || '<p class="empty-note" style="margin-bottom:12px;">Belum ada blok. Tambahkan lewat tombol di bawah.</p>'}
+    <div class="add-block-bar">
+      ${types.map(t => `<button onclick="blkAdd('${t}')">+ ${BLOCK_LABELS[t]}</button>`).join('')}
+    </div>`;
+}
+
+function cleanBlocks(){
+  return blockState.filter(b => {
+    if (b.type === 'paragraph') return b.text.trim();
+    if (b.type === 'callout') return b.text.trim();
+    if (b.type === 'external_link') return b.url.trim();
+    if (b.type === 'page_link') return b.page_id;
+    if (b.type === 'list'){ b.items = b.items.filter(p => p[0].trim() || p[1].trim()); return b.items.length; }
+    if (b.type === 'images'){ b.items = b.items.filter(x => x.url.trim()); return b.items.length; }
+    if (b.type === 'accordion'){ b.items = b.items.filter(x => x.title.trim()); return b.items.length; }
+    return false;
+  });
+}
+
+/* ================= PERIKOP ================= */
+let editingSectionId = null;
+
+function renderSectionList(){
+  const el = document.getElementById('sectionList');
+  if (!SECTIONS.length){ el.innerHTML = '<p class="empty-note">Belum ada perikop.</p>'; return; }
+  el.innerHTML = SECTIONS.map((s, i) => {
+    const nBlocks = Array.isArray(s.blocks) ? s.blocks.length : 0;
+    const nPages = PAGES.filter(p => p.section_id === s.id).length;
+    return `<div class="card"><div class="card-row">
+      <div>
+        <span class="card-code">${esc(s.code)}</span>
+        <h3>${esc(s.title)}</h3>
+        <p>${nBlocks} blok konten${nPages ? ' · ' + nPages + ' halaman terkait' : ''}</p>
+      </div>
+      <div class="card-actions">
+        ${canEdit() && i > 0 ? `<button class="icon-btn" onclick="moveSection('${s.id}',-1)">&uarr;</button>` : ''}
+        ${canEdit() && i < SECTIONS.length-1 ? `<button class="icon-btn" onclick="moveSection('${s.id}',1)">&darr;</button>` : ''}
+        ${canEdit() ? `<button class="icon-btn" onclick="editSection('${s.id}')">Ubah</button>` : ''}
+        ${isAdmin() ? `<button class="icon-btn danger" onclick="deleteSection('${s.id}')">Hapus</button>` : ''}
+      </div></div></div>`;
+  }).join('');
+}
+
+function openSectionForm(section){
+  editingSectionId = section ? section.id : null;
+  blockState = section && Array.isArray(section.blocks) ? JSON.parse(JSON.stringify(section.blocks)) : [];
+  blockAllowPageLink = true;
+
+  document.getElementById('sectionForm').innerHTML = `
+    <div class="form-box">
+      <div class="form-grid">
+        <div><label>Kode</label><input type="text" id="s_code" value="${section ? esc(section.code) : ''}" placeholder="AST-07"></div>
+        <div><label>Label perikop</label><input type="text" id="s_eyebrow" value="${section ? esc(section.eyebrow||'') : ''}" placeholder="Perikop 07"></div>
+        <div class="full"><label>Judul</label><input type="text" id="s_title" value="${section ? esc(section.title) : ''}" placeholder="Judul perikop"></div>
+      </div>
+      <div class="blocks-zone" id="blocksZone"></div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveSection()">Simpan Perikop</button>
+        <button class="btn btn-secondary" onclick="closeSectionForm()">Batal</button>
+      </div>
+    </div>`;
+  drawBlocks();
+  document.getElementById('sectionForm').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+window.closeSectionForm = function(){ editingSectionId = null; blockState = []; document.getElementById('sectionForm').innerHTML = ''; };
+window.editSection = function(id){ openSectionForm(SECTIONS.find(s => s.id === id)); };
+
+window.saveSection = async function(){
+  const code = document.getElementById('s_code').value.trim();
+  const title = document.getElementById('s_title').value.trim();
+  if (!code || !title){ alert('Kode dan judul wajib diisi.'); return; }
+  const payload = { code, title, eyebrow: document.getElementById('s_eyebrow').value.trim() || null, blocks: cleanBlocks() };
+  let error;
+  if (editingSectionId){
+    ({ error } = await supabaseClient.from('sections').update(payload).eq('id', editingSectionId));
+  } else {
+    payload.sort_order = SECTIONS.length ? Math.max(...SECTIONS.map(s => s.sort_order||0)) + 1 : 1;
+    ({ error } = await supabaseClient.from('sections').insert(payload));
+  }
+  if (error){ alert('Gagal menyimpan: ' + error.message); return; }
+  closeSectionForm();
+  await refreshAll();
+};
+
+window.deleteSection = async function(id){
+  const n = PAGES.filter(p => p.section_id === id).length;
+  const warn = n ? `\n\nPerhatian: ${n} Konten Halaman yang menginduk ke perikop ini juga akan ikut terhapus.` : '';
+  if (!confirm('Hapus perikop ini? Tindakan tidak dapat dibatalkan.' + warn)) return;
+  const { error } = await supabaseClient.from('sections').delete().eq('id', id);
+  if (error){ alert('Gagal menghapus: ' + error.message); return; }
+  await refreshAll();
+};
+
+window.moveSection = async function(id, dir){
+  const idx = SECTIONS.findIndex(s => s.id === id), swap = idx + dir;
+  if (swap < 0 || swap >= SECTIONS.length) return;
+  const a = SECTIONS[idx], b = SECTIONS[swap];
+  await Promise.all([
+    supabaseClient.from('sections').update({ sort_order: b.sort_order }).eq('id', a.id),
+    supabaseClient.from('sections').update({ sort_order: a.sort_order }).eq('id', b.id)
+  ]);
+  await refreshAll();
+};
+
+/* ================= KONTEN HALAMAN ================= */
+let editingPageId = null;
+
+function slugify(str){
+  return String(str).toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').slice(0,60) || 'halaman';
+}
+
+function renderPageList(){
+  const el = document.getElementById('pageList');
+  if (!PAGES.length){ el.innerHTML = '<p class="empty-note">Belum ada Konten Halaman.</p>'; return; }
+  el.innerHTML = PAGES.map(p => {
+    const parent = SECTIONS.find(s => s.id === p.section_id);
+    const nBlocks = Array.isArray(p.blocks) ? p.blocks.length : 0;
+    return `<div class="card"><div class="card-row">
+      <div>
+        <span class="card-code">${parent ? esc(parent.code) : 'tanpa induk'}</span>
+        <h3>${esc(p.title)}</h3>
+        <p>${nBlocks} blok konten · alamat: #halaman/${esc(p.slug)}</p>
+      </div>
+      <div class="card-actions">
+        ${canEdit() ? `<button class="icon-btn" onclick="editPage('${p.id}')">Ubah</button>` : ''}
+        ${isAdmin() ? `<button class="icon-btn danger" onclick="deletePage('${p.id}')">Hapus</button>` : ''}
+      </div></div></div>`;
+  }).join('');
+}
+
+function openPageForm(page){
+  editingPageId = page ? page.id : null;
+  blockState = page && Array.isArray(page.blocks) ? JSON.parse(JSON.stringify(page.blocks)) : [];
+  blockAllowPageLink = false;
+
+  const opts = SECTIONS.map(s =>
+    `<option value="${esc(s.id)}" ${page && page.section_id === s.id ? 'selected' : ''}>${esc(s.code)} — ${esc(s.title)}</option>`).join('');
+
+  document.getElementById('pageForm').innerHTML = `
+    <div class="form-box">
+      <label>Menginduk ke perikop <span style="color:var(--rust);">(wajib)</span></label>
+      <select id="p_section"><option value="">— pilih perikop —</option>${opts}</select>
+      <div class="form-grid">
+        <div><label>Judul halaman</label><input type="text" id="p_title" value="${page ? esc(page.title) : ''}" placeholder="Prosedur Verifikasi Aset"></div>
+        <div><label>Label kecil (opsional)</label><input type="text" id="p_eyebrow" value="${page ? esc(page.eyebrow||'') : ''}" placeholder="Materi Lanjutan"></div>
+      </div>
+      <label>Alamat halaman (slug)</label>
+      <input type="text" id="p_slug" value="${page ? esc(page.slug) : ''}" placeholder="otomatis dari judul jika dikosongkan">
+      <p class="hint" style="margin-top:-8px;">Halaman akan dapat dibuka di <code>index.html#halaman/slug-anda</code></p>
+      <div class="blocks-zone" id="blocksZone"></div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="savePage()">Simpan Halaman</button>
+        <button class="btn btn-secondary" onclick="closePageForm()">Batal</button>
+      </div>
+    </div>`;
+  drawBlocks();
+  document.getElementById('pageForm').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+window.closePageForm = function(){ editingPageId = null; blockState = []; document.getElementById('pageForm').innerHTML = ''; };
+window.editPage = function(id){ openPageForm(PAGES.find(p => p.id === id)); };
+
+window.savePage = async function(){
+  const section_id = document.getElementById('p_section').value;
+  const title = document.getElementById('p_title').value.trim();
+  if (!section_id){ alert('Halaman wajib menginduk ke salah satu perikop.'); return; }
+  if (!title){ alert('Judul halaman wajib diisi.'); return; }
+
+  const slugInput = document.getElementById('p_slug').value.trim();
+  const payload = {
+    section_id, title,
+    eyebrow: document.getElementById('p_eyebrow').value.trim() || null,
+    slug: slugify(slugInput || title),
+    blocks: cleanBlocks()
+  };
+
+  let error;
+  if (editingPageId){
+    ({ error } = await supabaseClient.from('pages').update(payload).eq('id', editingPageId));
+  } else {
+    payload.sort_order = PAGES.length ? Math.max(...PAGES.map(p => p.sort_order||0)) + 1 : 1;
+    ({ error } = await supabaseClient.from('pages').insert(payload));
+  }
+  if (error){
+    alert(error.message.includes('duplicate') || error.message.includes('unique')
+      ? 'Alamat halaman (slug) sudah dipakai halaman lain. Gunakan slug yang berbeda.'
+      : 'Gagal menyimpan: ' + error.message);
+    return;
+  }
+  closePageForm();
+  await refreshAll();
+};
+
+window.deletePage = async function(id){
+  if (!confirm('Hapus halaman ini? Tautan menuju halaman ini di perikop akan berhenti bekerja.')) return;
+  const { error } = await supabaseClient.from('pages').delete().eq('id', id);
+  if (error){ alert('Gagal menghapus: ' + error.message); return; }
+  await refreshAll();
+};
+
+/* ================= VIDEO ================= */
+let editingVideoId = null;
+function extractDriveId(raw){
+  const m = String(raw).match(/[-\w]{25,}/);
+  return m ? m[0] : String(raw).trim();
+}
+
+function renderVideoList(){
+  const el = document.getElementById('videoList');
+  if (!VIDEOS.length){ el.innerHTML = '<p class="empty-note">Belum ada video.</p>'; return; }
+  el.innerHTML = VIDEOS.map((v, i) => {
+    const pg = v.page_id ? PAGES.find(p => p.id === v.page_id) : null;
+    const badges = `<span class="badge ${v.show_on_home !== false ? 'on' : 'off'}">${v.show_on_home !== false ? 'Tampil di HOME' : 'Tidak di HOME'}</span>`
+      + (pg ? `<a class="badge link" href="./index.html#halaman/${esc(pg.slug)}" target="_blank" rel="noopener">↗ Halaman: ${esc(pg.title)}</a>` : '');
+    return `<div class="card"><div class="card-row">
+    <div>
+      <span class="card-code">Urutan ${i+1}</span>
+      <h3>${esc(v.title)}</h3>
+      <p>${esc(v.description || '')}</p>
+      <div class="badges">${badges}</div>
+    </div>
+    <div class="card-actions">
+      ${canEdit() && i > 0 ? `<button class="icon-btn" onclick="moveVideo('${v.id}',-1)">&uarr;</button>` : ''}
+      ${canEdit() && i < VIDEOS.length-1 ? `<button class="icon-btn" onclick="moveVideo('${v.id}',1)">&darr;</button>` : ''}
+      ${canEdit() ? `<button class="icon-btn" onclick="editVideo('${v.id}')">Ubah</button>` : ''}
+      ${isAdmin() ? `<button class="icon-btn danger" onclick="deleteVideo('${v.id}')">Hapus</button>` : ''}
+    </div></div></div>`;
+  }).join('');
+}
+
+function openVideoForm(video){
+  editingVideoId = video ? video.id : null;
+  document.getElementById('videoForm').innerHTML = `
+    <div class="form-box">
+      <label>Judul video</label>
+      <input type="text" id="v_title" value="${video ? esc(video.title) : ''}" placeholder="Sesi 01 — Pengantar Manajemen Aset">
+      <label>Keterangan singkat (opsional)</label>
+      <input type="text" id="v_desc" value="${video ? esc(video.description||'') : ''}" placeholder="Durasi 12 menit">
+      <label>Tautan Google Drive</label>
+      <div class="link-with-upload">
+        <input type="text" id="v_link" value="${video ? esc(video.drive_file_id) : ''}" placeholder="https://drive.google.com/file/d/XXXXXXX/view">
+        <button type="button" class="btn-upload" onclick="uploadFor('video', a => { document.getElementById('v_link').value = a.drive_file_id; if(!document.getElementById('v_title').value.trim()) document.getElementById('v_title').value = a.name; })">&uarr; Unggah</button>
+      </div>
+      <p class="hint" style="margin-top:2px;">Tempel tautan Drive, atau klik <b>Unggah</b> untuk mengirim berkas langsung dari komputer. Untuk tautan yang ditempel manual, pastikan akses berbagi diatur ke "Siapa saja yang memiliki tautan".</p>
+
+      <div class="opt-box">
+        <label class="check-row">
+          <input type="checkbox" id="v_home" ${!video || video.show_on_home !== false ? 'checked' : ''}>
+          <span><b>Tampil di HOME</b><br><small>Video ikut ditayangkan di beranda. Urutan tayang mengikuti urutan daftar (tombol ↑ ↓).</small></span>
+        </label>
+      </div>
+
+      <label>Tampilkan pada Konten Halaman (opsional)</label>
+      <select id="v_page">
+        <option value="">— tidak ditempatkan di halaman mana pun —</option>
+        ${PAGES.map(p => {
+          const par = SECTIONS.find(s => s.id === p.section_id);
+          return `<option value="${esc(p.id)}" ${video && video.page_id === p.id ? 'selected' : ''}>${par ? esc(par.code) + ' — ' : ''}${esc(p.title)}</option>`;
+        }).join('')}
+      </select>
+      <p class="hint" style="margin-top:-8px;">Jika dipilih, video tampil di bagian <b>paling atas</b> halaman tersebut.</p>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveVideo()">Simpan Video</button>
+        <button class="btn btn-secondary" onclick="closeVideoForm()">Batal</button>
+      </div>
+    </div>`;
+}
+
+window.closeVideoForm = function(){ editingVideoId = null; document.getElementById('videoForm').innerHTML = ''; };
+window.editVideo = function(id){ openVideoForm(VIDEOS.find(v => v.id === id)); };
+
+window.saveVideo = async function(){
+  const title = document.getElementById('v_title').value.trim();
+  const link = document.getElementById('v_link').value.trim();
+  if (!title || !link){ alert('Judul dan tautan video wajib diisi.'); return; }
+  const payload = {
+    title,
+    description: document.getElementById('v_desc').value.trim() || null,
+    drive_file_id: extractDriveId(link),
+    show_on_home: document.getElementById('v_home').checked,
+    page_id: document.getElementById('v_page').value || null
+  };
+  let error;
+  if (editingVideoId){
+    ({ error } = await supabaseClient.from('videos').update(payload).eq('id', editingVideoId));
+  } else {
+    payload.sort_order = VIDEOS.length ? Math.max(...VIDEOS.map(v => v.sort_order||0)) + 1 : 1;
+    ({ error } = await supabaseClient.from('videos').insert(payload));
+  }
+  if (error){ alert('Gagal menyimpan: ' + error.message); return; }
+  closeVideoForm();
+  await refreshAll();
+};
+
+window.deleteVideo = async function(id){
+  if (!confirm('Hapus video ini dari daftar putar?')) return;
+  const { error } = await supabaseClient.from('videos').delete().eq('id', id);
+  if (error){ alert('Gagal menghapus: ' + error.message); return; }
+  await refreshAll();
+};
+
+window.moveVideo = async function(id, dir){
+  const idx = VIDEOS.findIndex(v => v.id === id), swap = idx + dir;
+  if (swap < 0 || swap >= VIDEOS.length) return;
+  const a = VIDEOS[idx], b = VIDEOS[swap];
+  await Promise.all([
+    supabaseClient.from('videos').update({ sort_order: b.sort_order }).eq('id', a.id),
+    supabaseClient.from('videos').update({ sort_order: a.sort_order }).eq('id', b.id)
+  ]);
+  await refreshAll();
+};
+
+/* ================= DOKUMEN REFERENSI ================= */
+let editingDocId = null;
+
+function renderDocList(){
+  const el = document.getElementById('docList');
+  if (!DOCS.length){ el.innerHTML = '<p class="empty-note">Belum ada dokumen.</p>'; return; }
+  el.innerHTML = DOCS.map((d, i) => {
+    const pg = d.page_id ? PAGES.find(p => p.id === d.page_id) : null;
+    const badges = pg
+      ? `<a class="badge link" href="./index.html#halaman/${esc(pg.slug)}" target="_blank" rel="noopener">↗ Halaman: ${esc(pg.title)}</a>`
+      : `<span class="badge off">Tidak ditempatkan di halaman</span>`;
+    return `<div class="card"><div class="card-row">
+      <div>
+        <span class="card-code">Urutan ${i+1}</span>
+        <h3>${esc(d.title)}</h3>
+        <p>${esc(d.description || '')}</p>
+        <div class="badges">${badges}
+          <a class="badge link" href="./index.html#dokumen/${esc(d.id)}" target="_blank" rel="noopener">↗ Buka di pembaca</a>
+        </div>
+      </div>
+      <div class="card-actions">
+        ${canEdit() && i > 0 ? `<button class="icon-btn" onclick="moveDoc('${d.id}',-1)">&uarr;</button>` : ''}
+        ${canEdit() && i < DOCS.length-1 ? `<button class="icon-btn" onclick="moveDoc('${d.id}',1)">&darr;</button>` : ''}
+        ${canEdit() ? `<button class="icon-btn" onclick="editDoc('${d.id}')">Ubah</button>` : ''}
+        ${isAdmin() ? `<button class="icon-btn danger" onclick="deleteDoc('${d.id}')">Hapus</button>` : ''}
+      </div></div></div>`;
+  }).join('');
+}
+
+function openDocForm(doc){
+  editingDocId = doc ? doc.id : null;
+  document.getElementById('docForm').innerHTML = `
+    <div class="form-box">
+      <label>Judul dokumen</label>
+      <input type="text" id="d_title" value="${doc ? esc(doc.title) : ''}" placeholder="Pedoman Verifikasi Aset 2026">
+      <label>Keterangan singkat (opsional)</label>
+      <input type="text" id="d_desc" value="${doc ? esc(doc.description||'') : ''}" placeholder="Revisi 02 · 24 halaman">
+      <label>Tautan PDF (Google Drive atau URL langsung)</label>
+      <div class="link-with-upload">
+        <input type="text" id="d_link" value="${doc ? esc(doc.drive_file_id) : ''}" placeholder="https://drive.google.com/file/d/XXXXXXX/view">
+        <button type="button" class="btn-upload" onclick="uploadFor('document', a => { document.getElementById('d_link').value = a.drive_file_id; if(!document.getElementById('d_title').value.trim()) document.getElementById('d_title').value = a.name; })">&uarr; Unggah</button>
+      </div>
+      <p class="hint" style="margin-top:2px;">Tempel tautan, atau klik <b>Unggah</b> untuk mengirim PDF langsung dari komputer.</p>
+
+      <label>Tampilkan pada Konten Halaman (opsional)</label>
+      <select id="d_page">
+        <option value="">— tidak ditempatkan di halaman mana pun —</option>
+        ${PAGES.map(p => {
+          const par = SECTIONS.find(s => s.id === p.section_id);
+          return `<option value="${esc(p.id)}" ${doc && doc.page_id === p.id ? 'selected' : ''}>${par ? esc(par.code) + ' — ' : ''}${esc(p.title)}</option>`;
+        }).join('')}
+      </select>
+      <p class="hint" style="margin-top:-8px;">Jika dipilih, dokumen tampil di bagian <b>paling akhir</b> halaman tersebut. Terlepas dari pilihan ini, dokumen selalu tersedia di menu Dokumen Referensi.</p>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveDoc()">Simpan Dokumen</button>
+        <button class="btn btn-secondary" onclick="closeDocForm()">Batal</button>
+      </div>
+    </div>`;
+  document.getElementById('docForm').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+window.closeDocForm = function(){ editingDocId = null; document.getElementById('docForm').innerHTML = ''; };
+window.editDoc = function(id){ openDocForm(DOCS.find(d => d.id === id)); };
+
+window.saveDoc = async function(){
+  const title = document.getElementById('d_title').value.trim();
+  const link = document.getElementById('d_link').value.trim();
+  if (!title || !link){ alert('Judul dan tautan dokumen wajib diisi.'); return; }
+  const payload = {
+    title,
+    description: document.getElementById('d_desc').value.trim() || null,
+    drive_file_id: extractDriveId(link),
+    page_id: document.getElementById('d_page').value || null
+  };
+  let error;
+  if (editingDocId){
+    ({ error } = await supabaseClient.from('documents').update(payload).eq('id', editingDocId));
+  } else {
+    payload.sort_order = DOCS.length ? Math.max(...DOCS.map(d => d.sort_order||0)) + 1 : 1;
+    ({ error } = await supabaseClient.from('documents').insert(payload));
+  }
+  if (error){ alert('Gagal menyimpan: ' + error.message); return; }
+  closeDocForm();
+  await refreshAll();
+};
+
+window.deleteDoc = async function(id){
+  if (!confirm('Hapus dokumen ini?')) return;
+  const { error } = await supabaseClient.from('documents').delete().eq('id', id);
+  if (error){ alert('Gagal menghapus: ' + error.message); return; }
+  await refreshAll();
+};
+
+window.moveDoc = async function(id, dir){
+  const idx = DOCS.findIndex(d => d.id === id), swap = idx + dir;
+  if (swap < 0 || swap >= DOCS.length) return;
+  const a = DOCS[idx], b = DOCS[swap];
+  await Promise.all([
+    supabaseClient.from('documents').update({ sort_order: b.sort_order }).eq('id', a.id),
+    supabaseClient.from('documents').update({ sort_order: a.sort_order }).eq('id', b.id)
+  ]);
+  await refreshAll();
+};
+
+/* ================= PENGGUNA ================= */
+let USERS = [];
+
+async function loadUsers(){
+  const { data, error } = await supabaseClient.from('profiles').select('*').order('username', { ascending: true });
+  const body = document.getElementById('usersTableBody');
+  if (error || !data){ body.innerHTML = '<tr><td colspan="5">Gagal memuat pengguna.</td></tr>'; return; }
+  USERS = data;
+  body.innerHTML = data.map(u => {
+    const self = currentProfile && u.id === currentProfile.id;
+    return `<tr>
+      <td><b>${esc(u.username || '—')}</b>${self ? ' <span class="badge on" style="margin-left:6px;">Anda</span>' : ''}</td>
+      <td style="color:var(--slate); font-size:12.5px;">${esc(u.email || '')}</td>
+      <td><select class="role-select" ${self ? 'disabled title="Peran akun sendiri tidak dapat diubah dari sini"' : ''} onchange="changeUserRole('${u.id}', this.value)">
+        <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
+        <option value="editor" ${u.role==='editor'?'selected':''}>Editor</option>
+        <option value="viewer" ${u.role==='viewer'?'selected':''}>Viewer</option>
+      </select></td>
+      <td style="color:var(--slate); font-size:12.5px;">${u.created_at ? new Date(u.created_at).toLocaleDateString('id-ID') : '-'}</td>
+      <td>${self
+        ? '<span style="font-size:11.5px; color:var(--slate);">Ubah di tab Akun Saya</span>'
+        : `<button class="icon-btn" onclick="sendResetLink('${esc(u.email||'')}','${esc(u.username||'')}')">Kirim reset sandi</button>`}</td>
+    </tr>`;
+  }).join('');
+}
+
+window.changeUserRole = async function(userId, newRole){
+  const { error } = await supabaseClient.from('profiles').update({ role: newRole }).eq('id', userId);
+  if (error) alert('Gagal mengubah peran: ' + error.message);
+  loadUsers();
+};
+
+function openUserForm(){
+  document.getElementById('userForm').innerHTML = `
+    <div class="form-box">
+      <div class="form-grid">
+        <div><label>Nama User <span style="color:var(--rust);">(wajib)</span></label>
+          <input type="text" id="u_name" placeholder="mis. Budi Santoso atau budi.s"></div>
+        <div><label>Email <span style="color:var(--rust);">(wajib)</span></label>
+          <input type="text" id="u_email" placeholder="budi@perusahaan.co.id"></div>
+        <div><label>Kata sandi <span style="color:var(--rust);">(wajib)</span></label>
+          <input type="text" id="u_pass" placeholder="minimal 6 karakter"></div>
+        <div><label>Hak akses <span style="color:var(--rust);">(wajib)</span></label>
+          <select id="u_role">
+            <option value="viewer">Viewer — hanya melihat</option>
+            <option value="editor">Editor — boleh mengubah konten</option>
+            <option value="admin">Admin — akses penuh</option>
+          </select></div>
+      </div>
+      <p class="hint">Nama User dipakai untuk masuk (boleh juga memakai email). Catat kata sandinya dan sampaikan kepada yang bersangkutan — kata sandi tidak dapat dilihat kembali setelah akun dibuat.</p>
+      <div id="u_msg" class="auth-msg" style="position:static;"></div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="u_save" onclick="saveUser()">Buat Pengguna</button>
+        <button class="btn btn-secondary" onclick="closeUserForm()">Batal</button>
+      </div>
+    </div>`;
+  document.getElementById('userForm').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+window.closeUserForm = function(){ document.getElementById('userForm').innerHTML = ''; };
+
+window.saveUser = async function(){
+  const username = document.getElementById('u_name').value.trim();
+  const email = document.getElementById('u_email').value.trim();
+  const password = document.getElementById('u_pass').value;
+  const role = document.getElementById('u_role').value;
+  const msg = document.getElementById('u_msg');
+  const btn = document.getElementById('u_save');
+
+  const show = (text, type) => { msg.textContent = text; msg.className = 'auth-msg show ' + type; };
+
+  if (!username || !email || !password){ show('Nama User, email, dan kata sandi wajib diisi.', 'error'); return; }
+  if (!email.includes('@')){ show('Format email tidak valid.', 'error'); return; }
+  if (password.length < 6){ show('Kata sandi minimal 6 karakter.', 'error'); return; }
+  if (USERS.some(u => (u.username||'').toLowerCase() === username.toLowerCase())){
+    show('Nama User sudah dipakai. Gunakan nama lain.', 'error'); return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Membuat akun…';
+  try{
+    /* Klien kedua yang terpisah: akun baru dibuat tanpa memutus sesi login admin */
+    const cleanUrl = String(window.SUPABASE_URL).trim().replace(/\/+$/, "");
+    const helper = window.supabase.createClient(cleanUrl, String(window.SUPABASE_ANON_KEY).trim(), {
+      auth: { persistSession:false, autoRefreshToken:false, detectSessionInUrl:false, storageKey:'sb-helper-createuser' }
+    });
+
+    const { data, error } = await helper.auth.signUp({
+      email, password, options:{ data:{ username } }
+    });
+    if (error) throw error;
+    if (!data.user) throw new Error('Akun tidak terbentuk. Pastikan "Confirm email" dinonaktifkan di Supabase → Authentication → Sign In / Providers → Email.');
+
+    /* Peran selalu dimulai dari viewer; admin menetapkannya di sini */
+    const { error: upErr } = await supabaseClient.from('profiles')
+      .update({ username, role }).eq('id', data.user.id);
+    if (upErr) throw upErr;
+
+    try { await helper.auth.signOut(); } catch(e){}
+
+    show(`Akun "${username}" berhasil dibuat dengan hak akses ${role}.`, 'ok');
+    setTimeout(() => { closeUserForm(); loadUsers(); }, 1400);
+  } catch(err){
+    let m = err.message || 'Gagal membuat akun.';
+    if (m.toLowerCase().includes('already registered') || m.toLowerCase().includes('already been registered'))
+      m = 'Email tersebut sudah terdaftar. Gunakan email lain.';
+    show(m, 'error');
+    btn.disabled = false; btn.textContent = 'Buat Pengguna';
+  }
+};
+
+/* ================= TAMPILAN BERANDA ================= */
+let HERO = {};
+const HERO_KEYS = ['brand_sub','hero_pill','hero_title','hero_lead','mods_title','hero_cyc_title','hero_stages'];
+const HERO_DEFAULT = {
+  brand_sub:'Portal sosialisasi internal',
+  hero_pill:'Portal Sosialisasi Internal',
+  hero_title:'Setiap aset punya cerita.|Tugas kita *menjaganya tetap bernilai*.',
+  hero_lead:'Materi sosialisasi manajemen aset yang disusun runut — dari konsep dasar hingga praktik kepatuhan — lengkap dengan rekaman video dan dokumen rujukan untuk seluruh unit kerja.',
+  mods_title:'',
+  hero_cyc_title:'Siklus Hidup Aset',
+  hero_stages:'[{"title":"Perencanaan","desc":"Menentukan kebutuhan aset"},{"title":"Pengadaan","desc":"Pembelian, sewa, penerimaan"},{"title":"Pemanfaatan","desc":"Penggunaan sesuai fungsi"},{"title":"Pemeliharaan","desc":"Perawatan berkala"},{"title":"Penghapusan","desc":"Pelepasan aset tak ekonomis"}]'
+};
+let heroStages = [];
+
+async function loadHero(){
+  const { data } = await supabaseClient.from('site_settings').select('key,value').in('key', HERO_KEYS);
+  HERO = Object.assign({}, HERO_DEFAULT);
+  (data || []).forEach(r => { if (r.value !== null && r.value !== undefined) HERO[r.key] = r.value; });
+  try { heroStages = JSON.parse(HERO.hero_stages || '[]'); } catch(e){ heroStages = []; }
+  if (!Array.isArray(heroStages)) heroStages = [];
+  renderHeroEditor();
+}
+
+window.heroStageSet = function(i, field, v){ heroStages[i][field] = v; };
+window.heroStageAdd = function(){ heroStages.push({title:'',desc:''}); renderHeroEditor(); };
+window.heroStageDel = function(i){ heroStages.splice(i,1); renderHeroEditor(); };
+window.heroStageMove = function(i, d){
+  const j = i + d; if (j < 0 || j >= heroStages.length) return;
+  [heroStages[i], heroStages[j]] = [heroStages[j], heroStages[i]];
+  renderHeroEditor();
+};
+
+function renderHeroEditor(){
+  const box = document.getElementById('berandaEditor');
+  if (!box) return;
+  const ro = canEdit() ? '' : 'disabled';
+
+  box.innerHTML = `
+    <div class="form-box">
+      <label style="margin-bottom:10px;">Bagian Pembuka</label>
+
+      <label>Label kecil di bawah nama situs (pojok kiri atas)</label>
+      <input type="text" id="h_brandsub" ${ro} value="${esc(HERO.brand_sub)}" placeholder="Portal sosialisasi internal">
+
+      <label>Lencana kecil di atas judul</label>
+      <input type="text" id="h_pill" ${ro} value="${esc(HERO.hero_pill)}" placeholder="Portal Sosialisasi Internal">
+
+      <label>Judul besar</label>
+      <textarea id="h_title" rows="2" ${ro}>${esc(HERO.hero_title)}</textarea>
+      <div class="note-box" style="margin:-6px 0 16px;">
+        <b>Cara menulis judul</b>
+        <p>Tanda <code>|</code> membuat baris baru. Teks di antara dua tanda bintang <code>*begini*</code> akan diberi warna aksen.</p>
+        <p style="margin:0;">Contoh: <code>Setiap aset punya cerita.|Tugas kita *menjaganya tetap bernilai*.</code></p>
+      </div>
+
+      <label>Kalimat pengantar</label>
+      <textarea id="h_lead" rows="3" ${ro}>${esc(HERO.hero_lead)}</textarea>
+
+      <label>Judul bagian daftar modul (kosongkan untuk otomatis, mis. "6 modul materi")</label>
+      <input type="text" id="h_mods" ${ro} value="${esc(HERO.mods_title)}" placeholder="otomatis">
+
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveHero()" ${ro}>Simpan Tampilan Beranda</button>
+        <button class="btn btn-secondary" onclick="resetHero()" ${ro}>Kembalikan ke Bawaan</button>
+        <span id="heroMsg" style="font-size:12.5px; color:var(--ledger-green); align-self:center; display:none;">Tersimpan ✓</span>
+      </div>
+    </div>
+
+    <div class="form-box">
+      <label style="margin-bottom:6px;">Kartu Tahapan (di sebelah kanan judul)</label>
+      <p class="hint">Daftar tahap yang tampil sebagai kartu bertingkat. Kosongkan semuanya bila tidak ingin menampilkan kartu ini.</p>
+
+      <label>Judul kartu</label>
+      <input type="text" id="h_cyctitle" ${ro} value="${esc(HERO.hero_cyc_title)}" placeholder="Siklus Hidup Aset">
+
+      <label style="margin-top:6px;">Tahapan</label>
+      ${heroStages.map((s, i) => `
+        <div class="subitem"><div class="fields">
+          <input type="text" ${ro} value="${esc(s.title||'')}" placeholder="Nama tahap, mis. Perencanaan" oninput="heroStageSet(${i},'title',this.value)">
+          <input type="text" ${ro} value="${esc(s.desc||'')}" placeholder="Keterangan singkat" oninput="heroStageSet(${i},'desc',this.value)">
+        </div><div style="display:flex;flex-direction:column;gap:4px;">
+          ${canEdit() && i > 0 ? `<button class="rm" style="border-color:var(--line-ink);color:var(--ink);" onclick="heroStageMove(${i},-1)" title="Naikkan">&uarr;</button>` : ''}
+          ${canEdit() && i < heroStages.length-1 ? `<button class="rm" style="border-color:var(--line-ink);color:var(--ink);" onclick="heroStageMove(${i},1)" title="Turunkan">&darr;</button>` : ''}
+          ${canEdit() ? `<button class="rm" onclick="heroStageDel(${i})" title="Hapus tahap">&times;</button>` : ''}
+        </div></div>`).join('')}
+      ${canEdit() ? `<button class="add-sub" onclick="heroStageAdd()">+ Tambah tahap</button>` : ''}
+
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveHero()" ${ro}>Simpan Tampilan Beranda</button>
+      </div>
+    </div>`;
+}
+
+window.saveHero = async function(){
+  const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const stages = heroStages.filter(s => (s.title||'').trim());
+  const rows = [
+    { key:'brand_sub',      value: g('h_brandsub') },
+    { key:'hero_pill',      value: g('h_pill') },
+    { key:'hero_title',     value: g('h_title') },
+    { key:'hero_lead',      value: g('h_lead') },
+    { key:'mods_title',     value: g('h_mods') },
+    { key:'hero_cyc_title', value: g('h_cyctitle') },
+    { key:'hero_stages',    value: JSON.stringify(stages) }
+  ];
+  const { error } = await supabaseClient.from('site_settings').upsert(rows, { onConflict:'key' });
+  if (error){ alert('Gagal menyimpan: ' + error.message); return; }
+  rows.forEach(r => HERO[r.key] = r.value);
+  heroStages = stages;
+  const m = document.getElementById('heroMsg');
+  if (m){ m.style.display = 'inline'; setTimeout(() => m.style.display = 'none', 2500); }
+};
+
+window.resetHero = function(){
+  if (!confirm('Kembalikan seluruh pengaturan beranda ke bawaan?')) return;
+  HERO = Object.assign({}, HERO_DEFAULT);
+  try { heroStages = JSON.parse(HERO_DEFAULT.hero_stages); } catch(e){ heroStages = []; }
+  renderHeroEditor();
+};
+
+/* ================= BERKAS & UNGGAHAN ================= */
+
+async function loadDriveConfig(){
+  const keys = ['google_client_id','drive_folder_video','drive_folder_image','drive_folder_document'];
+  const { data } = await supabaseClient.from('site_settings').select('key,value').in('key', keys);
+  (data || []).forEach(r => { DRIVE_CFG[r.key] = r.value || ''; });
+  if (window.GDrive) window.GDrive.setClientId(DRIVE_CFG.google_client_id);
+  fillDriveConfigForm();
+}
+
+function fillDriveConfigForm(){
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  set('cfg_client_id', DRIVE_CFG.google_client_id);
+  set('cfg_folder_video', DRIVE_CFG.drive_folder_video);
+  set('cfg_folder_image', DRIVE_CFG.drive_folder_image);
+  set('cfg_folder_document', DRIVE_CFG.drive_folder_document);
+
+  const label = (id, folder) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = folder ? 'folder: …' + String(folder).slice(-10) : 'Drive utama pengunggah';
+  };
+  label('upFolderVideo', DRIVE_CFG.drive_folder_video);
+  label('upFolderImage', DRIVE_CFG.drive_folder_image);
+  label('upFolderDocument', DRIVE_CFG.drive_folder_document);
+  renderGDriveStatus();
+}
+
+function renderGDriveStatus(){
+  const box = document.getElementById('gdriveStatus');
+  if (!box) return;
+  const problems = [];
+  if (location.protocol === 'file:')
+    problems.push('Halaman ini dibuka langsung dari berkas komputer (<code>file:///</code>). Google menolak unggahan dari sumber seperti ini — fitur unggah baru berfungsi setelah situs di-deploy dengan HTTPS.');
+  if (!DRIVE_CFG.google_client_id)
+    problems.push('OAuth Client ID Google belum diisi.');
+  if (!window.GDrive || !window.GDrive.ready())
+    problems.push('Pustaka Google belum termuat. Periksa koneksi internet lalu muat ulang halaman.');
+
+  box.innerHTML = problems.length
+    ? `<div class="warn-box"><b>Unggahan belum siap dipakai</b><ul>${problems.map(p => `<li>${p}</li>`).join('')}</ul>
+       <p>Konten yang sudah ada tetap berfungsi normal. Tautan Drive juga masih bisa ditempel manual seperti biasa.</p></div>`
+    : `<div class="ok-box">Unggahan siap dipakai. Saat pertama kali mengunggah, Google akan meminta izin sekali.</div>`;
+}
+
+window.saveDriveConfig = async function(){
+  const rows = [
+    { key:'google_client_id',      value: document.getElementById('cfg_client_id').value.trim() },
+    { key:'drive_folder_video',    value: extractFolderId(document.getElementById('cfg_folder_video').value) },
+    { key:'drive_folder_image',    value: extractFolderId(document.getElementById('cfg_folder_image').value) },
+    { key:'drive_folder_document', value: extractFolderId(document.getElementById('cfg_folder_document').value) }
+  ];
+  const { error } = await supabaseClient.from('site_settings').upsert(rows, { onConflict:'key' });
+  if (error){ msgBox('cfg_msg', 'Gagal menyimpan: ' + error.message, 'error'); return; }
+  rows.forEach(r => DRIVE_CFG[r.key] = r.value);
+  if (window.GDrive) window.GDrive.setClientId(DRIVE_CFG.google_client_id);
+  fillDriveConfigForm();
+  msgBox('cfg_msg', 'Pengaturan tersimpan.', 'ok');
+};
+
+/* Menerima ID folder maupun alamat folder Drive yang lengkap */
+function extractFolderId(raw){
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  const m = s.match(/folders\/([-\w]{15,})/);
+  if (m) return m[1];
+  const m2 = s.match(/[-\w]{15,}/);
+  return m2 ? m2[0] : s;
+}
+
+window.testDriveAuth = async function(){
+  try{
+    if (window.GDrive) window.GDrive.setClientId(document.getElementById('cfg_client_id').value.trim());
+    await window.GDrive.getToken();
+    msgBox('cfg_msg', 'Izin Google berhasil diperoleh. Unggahan siap dipakai.', 'ok');
+  } catch(err){
+    msgBox('cfg_msg', err.message || 'Gagal memperoleh izin Google.', 'error');
+  }
+};
+
+/* ---- Proses unggah ---- */
+const KIND_LABEL = { video:'Video', image:'Gambar', document:'Dokumen' };
+const KIND_ACCEPT = { video:'video/*', image:'image/*', document:'application/pdf' };
+const KIND_FOLDER = { video:'drive_folder_video', image:'drive_folder_image', document:'drive_folder_document' };
+
+/* Membuka pemilih berkas, mengunggah, lalu mencatat ke pustaka.
+   onDone(asset) opsional — dipakai form video/dokumen/gambar. */
+window.uploadFor = function(kind, onDone){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = KIND_ACCEPT[kind] || '*/*';
+  input.onchange = async () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    try {
+      const asset = await doUpload(kind, file);
+      if (typeof onDone === 'function') onDone(asset);
+    } catch(err){
+      alert('Unggahan gagal: ' + (err.message || 'kesalahan tidak diketahui'));
+    }
+  };
+  input.click();
+};
+
+window.pickAndUpload = function(kind){ window.uploadFor(kind, null); };
+
+async function doUpload(kind, file){
+  const box = document.getElementById('uploadProgress');
+  const id = 'up' + Math.random().toString(36).slice(2);
+  if (box){
+    box.insertAdjacentHTML('afterbegin', `
+      <div class="up-row" id="${id}">
+        <div class="up-info"><b>${esc(file.name)}</b><span>${KIND_LABEL[kind]} · ${window.formatBytes(file.size)}</span></div>
+        <div class="up-bar"><i style="width:0%"></i></div>
+        <span class="up-pct">0%</span>
+      </div>`);
+  }
+  const row = document.getElementById(id);
+  const setPct = (p, text) => {
+    if (!row) return;
+    row.querySelector('.up-bar i').style.width = p + '%';
+    row.querySelector('.up-pct').textContent = text || (p + '%');
+  };
+
+  try{
+    const folder = DRIVE_CFG[KIND_FOLDER[kind]];
+    const res = await window.GDrive.upload(file, folder, p => setPct(p));
+    setPct(100, 'Menyimpan…');
+
+    const payload = {
+      kind, name: res.name || file.name,
+      drive_file_id: res.id,
+      mime_type: res.mimeType || file.type || null,
+      size_bytes: res.size ? Number(res.size) : (file.size || null),
+      source: 'upload',
+      uploaded_by: currentProfile ? currentProfile.id : null
+    };
+    const { data, error } = await supabaseClient.from('assets')
+      .upsert(payload, { onConflict:'drive_file_id' }).select().single();
+    if (error) throw error;
+
+    setPct(100, res._shareWarning ? 'Selesai (izin berbagi perlu dicek manual)' : 'Selesai ✓');
+    if (row) row.classList.add('done');
+    await loadAssets();
+    return data || payload;
+  } catch(err){
+    if (row){ row.classList.add('failed'); setPct(100, 'Gagal'); }
+    throw err;
+  }
+}
+
+/* ---- Pustaka berkas ---- */
+async function loadAssets(){
+  const { data, error } = await supabaseClient.from('assets').select('*').order('created_at', { ascending: false });
+  if (!error) ASSETS = data || [];
+  renderAssetList();
+}
+
+window.renderAssetList = function(){
+  const el = document.getElementById('assetList');
+  if (!el) return;
+  const f = document.getElementById('assetFilter');
+  const filter = f ? f.value : '';
+  const rows = filter ? ASSETS.filter(a => a.kind === filter) : ASSETS;
+
+  if (!rows.length){ el.innerHTML = '<p class="empty-note">Belum ada berkas terdaftar.</p>'; return; }
+
+  el.innerHTML = `<table><thead><tr><th>Nama Berkas</th><th>Jenis</th><th>Asal</th><th>Ukuran</th><th>Tautan</th></tr></thead><tbody>` +
+    rows.map(a => `<tr>
+      <td><b>${esc(a.name)}</b></td>
+      <td><span class="badge ${a.kind === 'video' ? 'link' : a.kind === 'image' ? 'on' : 'off'}">${KIND_LABEL[a.kind] || a.kind}</span></td>
+      <td style="font-size:12px; color:var(--slate);">${a.source === 'upload' ? 'Diunggah dari situs' : 'Ditempel manual'}</td>
+      <td style="font-size:12px; color:var(--slate);">${window.formatBytes(a.size_bytes) || '—'}</td>
+      <td><button class="icon-btn" onclick="copyAssetLink('${esc(a.drive_file_id)}', this)">Salin tautan</button></td>
+    </tr>`).join('') + `</tbody></table>`;
+};
+
+window.copyAssetLink = async function(fileId, btn){
+  const link = 'https://drive.google.com/file/d/' + fileId + '/view';
+  try{
+    await navigator.clipboard.writeText(link);
+    const old = btn.textContent; btn.textContent = 'Tersalin ✓';
+    setTimeout(() => btn.textContent = old, 1600);
+  } catch(e){
+    prompt('Salin tautan berikut:', link);
+  }
+};
+
+/* ================= AKUN SAYA ================= */
+function fillAccountInfo(){
+  if (!currentProfile) return;
+  document.getElementById('acctUsername').textContent = currentProfile.username || '—';
+  document.getElementById('acctEmail').textContent = currentProfile.email || '—';
+  document.getElementById('acctRole').textContent =
+    ({admin:'Admin — akses penuh', editor:'Editor — boleh mengubah konten', viewer:'Viewer — hanya melihat'})[currentProfile.role] || currentProfile.role;
+}
+
+function msgBox(id, text, type){
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'auth-msg show ' + type;
+}
+
+/* Memastikan orang yang meminta perubahan benar-benar pemilik akun */
+async function verifyCurrentPassword(password){
+  const email = currentProfile.email;
+  if (!email) throw new Error('Email akun tidak diketahui. Hubungi Administrator.');
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) throw new Error('Kata sandi saat ini tidak sesuai.');
+}
+
+window.changeOwnPassword = async function(){
+  const cur = document.getElementById('pw_current').value;
+  const nw = document.getElementById('pw_new').value;
+  const cf = document.getElementById('pw_confirm').value;
+  const btn = document.getElementById('pw_save');
+
+  if (!cur || !nw || !cf){ msgBox('pw_msg','Semua kolom wajib diisi.','error'); return; }
+  if (nw.length < 6){ msgBox('pw_msg','Kata sandi baru minimal 6 karakter.','error'); return; }
+  if (nw !== cf){ msgBox('pw_msg','Ulangi kata sandi tidak sama dengan kata sandi baru.','error'); return; }
+  if (nw === cur){ msgBox('pw_msg','Kata sandi baru sama dengan yang lama.','error'); return; }
+
+  btn.disabled = true; btn.textContent = 'Menyimpan…';
+  try{
+    await verifyCurrentPassword(cur);
+    const { error } = await supabaseClient.auth.updateUser({ password: nw });
+    if (error) throw error;
+    msgBox('pw_msg','Kata sandi berhasil diganti. Gunakan kata sandi baru pada login berikutnya.','ok');
+    ['pw_current','pw_new','pw_confirm'].forEach(id => document.getElementById(id).value = '');
+  } catch(err){
+    msgBox('pw_msg', err.message || 'Gagal mengganti kata sandi.', 'error');
+  }
+  btn.disabled = false; btn.textContent = 'Simpan Kata Sandi';
+};
+
+window.changeOwnEmail = async function(){
+  const newEmail = document.getElementById('em_new').value.trim();
+  const pass = document.getElementById('em_pass').value;
+  const btn = document.getElementById('em_save');
+
+  if (!newEmail || !pass){ msgBox('em_msg','Email baru dan kata sandi wajib diisi.','error'); return; }
+  if (!newEmail.includes('@') || newEmail.length < 5){ msgBox('em_msg','Format email tidak valid.','error'); return; }
+  if (newEmail.toLowerCase() === String(currentProfile.email || '').toLowerCase()){
+    msgBox('em_msg','Email baru sama dengan email saat ini.','error'); return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Memproses…';
+  try{
+    await verifyCurrentPassword(pass);
+    const { error } = await supabaseClient.auth.updateUser({ email: newEmail });
+    if (error) throw error;
+    msgBox('em_msg', `Tautan konfirmasi telah dikirim ke ${newEmail}. Email akan berganti setelah tautan tersebut diklik. Sampai saat itu, gunakan email lama untuk masuk.`, 'ok');
+    document.getElementById('em_new').value = '';
+    document.getElementById('em_pass').value = '';
+  } catch(err){
+    let m = err.message || 'Gagal mengganti email.';
+    if (m.toLowerCase().includes('already')) m = 'Email tersebut sudah dipakai akun lain.';
+    msgBox('em_msg', m, 'error');
+  }
+  btn.disabled = false; btn.textContent = 'Kirim Permintaan Ganti Email';
+};
+
+/* ---- Admin: kirim tautan atur ulang sandi ke pengguna lain ---- */
+window.sendResetLink = async function(email, username){
+  if (!email){ alert('Pengguna ini belum memiliki email.'); return; }
+  if (!confirm(`Kirim tautan atur ulang kata sandi ke ${email} (User: ${username || '—'})?\n\nPengguna tersebut akan menerima email berisi tautan untuk memasang kata sandi baru sendiri.`)) return;
+  try{
+    const opts = {};
+    if (location.protocol === 'http:' || location.protocol === 'https:'){
+      opts.redirectTo = location.href.split('#')[0];
+    }
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, opts);
+    if (error) throw error;
+    alert('Tautan atur ulang kata sandi sudah dikirim ke ' + email + '.');
+  } catch(err){
+    alert('Gagal mengirim tautan: ' + (err.message || 'kesalahan tidak diketahui'));
+  }
+};
+
+/* ---- Mode pemulihan: pengguna membuka tautan dari email ---- */
+let inRecoveryMode = false;
+
+function checkRecoveryMode(){
+  const h = location.hash || '';
+  if (h.includes('type=recovery')){
+    inRecoveryMode = true;
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('appScreen').classList.remove('show');
+    document.getElementById('recoveryScreen').style.display = 'flex';
+    return true;
+  }
+  return false;
+}
+
+document.getElementById('recForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const p1 = document.getElementById('recPass').value;
+  const p2 = document.getElementById('recPass2').value;
+  if (p1.length < 6){ msgBox('recMsg','Kata sandi minimal 6 karakter.','error'); return; }
+  if (p1 !== p2){ msgBox('recMsg','Kedua kata sandi tidak sama.','error'); return; }
+  try{
+    const { error } = await supabaseClient.auth.updateUser({ password: p1 });
+    if (error) throw error;
+    msgBox('recMsg','Kata sandi berhasil disimpan. Anda akan diarahkan untuk masuk…','ok');
+    inRecoveryMode = false;
+    setTimeout(async () => {
+      await supabaseClient.auth.signOut();
+      history.replaceState(null, '', location.pathname);
+      document.getElementById('recoveryScreen').style.display = 'none';
+      document.getElementById('authScreen').style.display = 'flex';
+    }, 1800);
+  } catch(err){
+    msgBox('recMsg', err.message || 'Gagal menyimpan kata sandi.', 'error');
+  }
+});
+
+/* ================= TEMA SITUS ================= */
+let themeState = null;
+
+function renderThemeEditor(){
+  const cp = themeState.colorPreset || window.DEFAULT_THEME.colorPreset;
+  const fp = themeState.fontPreset || window.DEFAULT_THEME.fontPreset;
+  const base = window.COLOR_PRESETS[cp] ? window.COLOR_PRESETS[cp].c : window.COLOR_PRESETS[window.DEFAULT_THEME.colorPreset].c;
+  const cc = themeState.custom || Object.assign({}, base);
+
+  const colorCards = Object.entries(window.COLOR_PRESETS).map(([key, p]) => `
+    <button class="theme-card ${cp === key ? 'sel' : ''}" onclick="pickColorPreset('${key}')">
+      <span class="swatches">
+        ${['dark','bg','accent','green','rust'].map(k => `<i style="background:${p.c[k]}"></i>`).join('')}
+      </span>
+      <span class="tc-name">${p.name}</span>
+      <span class="tc-desc">${p.desc}</span>
+    </button>`).join('');
+
+  const swatchFields = [
+    ['dark','Warna gelap (sidebar & panel)'], ['bg','Latar halaman'], ['ink','Warna teks utama'],
+    ['accent','Aksen utama'], ['green','Aksen sekunder'], ['rust','Warna sorotan'], ['slate','Teks samar']
+  ].map(([k, label]) => `
+    <div class="cf">
+      <label>${label}</label>
+      <div class="cf-row">
+        <input type="color" value="${cc[k]}" oninput="setCustomColor('${k}', this.value)">
+        <input type="text" value="${cc[k]}" oninput="setCustomColor('${k}', this.value)">
+      </div>
+    </div>`).join('');
+
+  const fontCards = Object.entries(window.FONT_PRESETS).map(([key, f]) => `
+    <button class="theme-card ${fp === key ? 'sel' : ''}" onclick="pickFontPreset('${key}')">
+      <span class="tc-name">${f.name}</span>
+      <span class="tc-desc">${f.desc}</span>
+    </button>`).join('');
+
+  document.getElementById('themeEditor').innerHTML = `
+    <div class="form-box">
+      <label style="margin-bottom:12px;">Tema Warna</label>
+      <div class="theme-grid">${colorCards}
+        <button class="theme-card ${cp === 'kustom' ? 'sel' : ''}" onclick="pickColorPreset('kustom')">
+          <span class="swatches">${['dark','bg','accent','green','rust'].map(k => `<i style="background:${cc[k]}"></i>`).join('')}</span>
+          <span class="tc-name">Warna Kustom</span>
+          <span class="tc-desc">Tentukan sendiri setiap warna sesuai identitas organisasi Anda.</span>
+        </button>
+      </div>
+
+      ${cp === 'kustom' ? `<div class="custom-zone"><div class="cf-grid">${swatchFields}</div></div>` : ''}
+
+      <label style="margin:24px 0 12px;">Tema Jenis Huruf</label>
+      <div class="theme-grid">${fontCards}</div>
+
+      <div class="preview-box">
+        <div class="pv-label">Pratinjau · mode ${(window.__mode==='dark'?'gelap':'terang')} — gunakan tombol di pojok kanan atas untuk melihat mode lain</div>
+        <div class="pv-body">
+          <div class="pv-side"><span class="pv-mark">Registry</span><span class="pv-brand">Manajemen Aset</span></div>
+          <div class="pv-main">
+            <span class="pv-eyebrow">Perikop 01</span>
+            <h4>Apa Itu Manajemen Aset</h4>
+            <p>Pendekatan terkoordinasi untuk merencanakan, memanfaatkan, dan memelihara aset organisasi.</p>
+            <span class="pv-note">Catatan penting</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveTheme()">Simpan Tema</button>
+        <button class="btn btn-secondary" onclick="resetTheme()">Kembalikan ke Bawaan</button>
+        <span id="themeMsg" style="font-size:12.5px; color:var(--ledger-green); align-self:center; display:none;">Tersimpan ✓</span>
+      </div>
+    </div>`;
+}
+
+window.pickColorPreset = function(key){
+  if (key === 'kustom' && !themeState.custom){
+    const base = window.COLOR_PRESETS[themeState.colorPreset] || window.COLOR_PRESETS.registry;
+    themeState.custom = Object.assign({}, base.c);
+  }
+  themeState.colorPreset = key;
+  window.applyTheme(themeState, window.__mode);
+  renderThemeEditor();
+};
+
+window.setCustomColor = function(k, v){
+  if (!/^#[0-9a-fA-F]{6}$/.test(v)) return;
+  themeState.custom = themeState.custom || {};
+  themeState.custom[k] = v;
+  window.applyTheme(themeState, window.__mode);
+};
+
+window.pickFontPreset = function(key){
+  themeState.fontPreset = key;
+  window.applyTheme(themeState, window.__mode);
+  renderThemeEditor();
+};
+
+window.saveTheme = async function(){
+  const { error } = await supabaseClient.from('site_settings')
+    .upsert({ key:'theme', value: JSON.stringify(themeState) }, { onConflict:'key' });
+  if (error){ alert('Gagal menyimpan tema: ' + error.message); return; }
+  const m = document.getElementById('themeMsg');
+  m.style.display = 'inline'; setTimeout(() => m.style.display = 'none', 2500);
+};
+
+window.resetTheme = function(){
+  themeState = JSON.parse(JSON.stringify(window.DEFAULT_THEME));
+  window.applyTheme(themeState, window.__mode);
+  renderThemeEditor();
+};
+
+/* ================= TOMBOL TAMBAH ================= */
+document.getElementById('addSectionBtn').addEventListener('click', () => openSectionForm(null));
+document.getElementById('addPageBtn').addEventListener('click', () => {
+  if (!SECTIONS.length){ alert('Buat minimal satu Perikop terlebih dahulu, karena setiap halaman wajib menginduk ke perikop.'); return; }
+  openPageForm(null);
+});
+document.getElementById('addVideoBtn').addEventListener('click', () => openVideoForm(null));
+document.getElementById('addDocBtn').addEventListener('click', () => openDocForm(null));
+document.getElementById('addUserBtn').addEventListener('click', openUserForm);
+
+/* ================= INIT ================= */
+(async function init(){
+  if (!supabaseClient) return;
+  if (checkRecoveryMode()) return;
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session && session.user) await loadProfileAndShowApp(session.user);
+})();
+</script>
+</body>
+</html>

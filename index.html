@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="id" data-mode="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal Manajemen Aset</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./config.js"></script>
+<script src="./theme.js"></script>
+<style>
+:root{
+  --bg:#F7F9FB; --bg-soft:#EFF3F6; --surface:#FFFFFF; --surface-2:#F2F5F8;
+  --glass:rgba(247,249,251,.92); --ink:#16222B; --body:#4A5D6B; --slate:#788B98;
+  --deep:#0B2F40; --deep-soft:#14465D; --on-deep:#E8F0F5;
+  --brand:#0B6E8F; --brand-2:#084F67; --accent:#0B6E8F; --green:#1B998B; --rust:#B05A3C;
+  --line:#DDE5EA; --line-soft:#EDF1F4; --hairline:rgba(11,110,143,.25);
+  --tint-brand:#E6F0F5; --tint-green:#E7F4F2; --tint-rust:#F7EDE9; --tint-slate:#EDF0F2;
+  --shadow:rgba(11,47,64,.10); --shadow-lg:rgba(11,47,64,.16);
+  --font-display:'Source Sans 3',system-ui,sans-serif;
+  --font-body:'Source Sans 3',system-ui,sans-serif;
+  --font-mono:'Anonymous Pro',ui-monospace,monospace;
+  --st1:var(--deep); --st2:var(--brand-2); --st3:var(--green);
+  --st4:var(--brand); --st5:var(--rust); --st-ink:#FFFFFF;
+}
+html[data-mode="dark"]{
+  --st1:var(--accent); --st-ink:#0C1A22;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;scroll-padding-top:86px;}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;}*{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;transition:background .25s ease,color .25s ease;}
+::selection{background:var(--brand);color:#fff;}
+a{color:var(--brand);}
+img{max-width:100%;}
+
+/* ================= TOPBAR ================= */
+.topbar{position:sticky;top:0;z-index:50;background:var(--glass);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);}
+.tin{max-width:1200px;margin:0 auto;padding:14px 40px;display:flex;align-items:center;
+  justify-content:space-between;gap:18px;}
+.logo{display:flex;align-items:center;gap:12px;min-width:0;text-decoration:none;color:inherit;}
+.logo .mk{flex:0 0 auto;width:36px;height:36px;border-radius:9px;background:var(--deep);
+  display:flex;align-items:center;justify-content:center;color:var(--on-deep);
+  font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em;}
+.logo b{display:block;font-size:16px;font-weight:700;letter-spacing:-.012em;line-height:1.2;
+  font-family:var(--font-display);}
+.logo span{display:block;font-size:11.5px;color:var(--slate);line-height:1.3;}
+.tnav{display:flex;align-items:center;gap:7px;}
+.tnav a.nl{font-size:14px;color:var(--body);text-decoration:none;font-weight:500;
+  padding:8px 13px;border-radius:7px;}
+.tnav a.nl:hover{color:var(--brand);background:var(--surface-2);}
+.iconbtn{width:38px;height:38px;border-radius:9px;border:1px solid var(--line);
+  background:var(--surface);color:var(--body);cursor:pointer;font-size:15px;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s;}
+.iconbtn:hover{border-color:var(--brand);color:var(--brand);}
+.iconbtn:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+.btn-admin{background:var(--deep);color:var(--on-deep);padding:9px 17px;border-radius:8px;
+  font-size:13.5px;font-weight:600;text-decoration:none;white-space:nowrap;}
+.btn-admin:hover{background:var(--deep-soft);color:var(--on-deep);}
+
+/* ================= HERO ================= */
+.hero{max-width:1200px;margin:0 auto;padding:60px 40px 52px;
+  display:grid;grid-template-columns:1.08fr .92fr;gap:52px;align-items:center;}
+.pill{display:inline-flex;align-items:center;gap:8px;background:var(--tint-green);color:var(--green);
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;padding:6px 13px;
+  border-radius:20px;margin-bottom:20px;text-transform:uppercase;}
+.pill i{width:6px;height:6px;border-radius:50%;background:var(--green);}
+h1.htitle{font-family:var(--font-display);font-size:48px;line-height:1.08;font-weight:700;
+  margin:0 0 20px;letter-spacing:-.028em;}
+h1.htitle em{font-style:normal;color:var(--brand);}
+.lead{font-size:17px;line-height:1.72;color:var(--body);margin:0 0 30px;max-width:48ch;}
+.cta{display:flex;gap:12px;flex-wrap:wrap;}
+.b1{background:var(--deep);color:var(--on-deep);border:none;padding:13px 23px;border-radius:9px;
+  font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-body);
+  display:inline-flex;align-items:center;gap:9px;}
+.b1:hover{background:var(--deep-soft);}
+.b2{background:var(--surface);color:var(--brand);border:1.5px solid var(--line);padding:13px 23px;
+  border-radius:9px;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-body);}
+.b2:hover{border-color:var(--brand);}
+.b1:focus-visible,.b2:focus-visible{outline:2px solid var(--brand);outline-offset:3px;}
+
+/* lifecycle card */
+.cyc{background:var(--bg-soft);border:1px solid var(--line);border-radius:16px;padding:26px;}
+.cyc .ch{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px;gap:12px;}
+.cyc .ch b{font-size:14.5px;font-weight:700;font-family:var(--font-display);}
+.cyc .ch span{font-family:var(--font-mono);font-size:10px;color:var(--slate);letter-spacing:.1em;white-space:nowrap;}
+.step{display:flex;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);
+  border-radius:10px;padding:11px 14px;}
+.step .sn{flex:0 0 auto;width:28px;height:28px;border-radius:8px;display:flex;
+  align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;color:#fff;}
+.step b{font-size:14px;font-weight:600;display:block;line-height:1.3;}
+.step span{font-size:12px;color:var(--slate);line-height:1.4;}
+.conn{height:11px;width:2px;background:var(--line);margin-left:28px;}
+
+/* ================= VIDEO BAND ================= */
+.band{background:var(--bg-soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:50px 0;}
+.bwrap{max-width:1200px;margin:0 auto;padding:0 40px;display:grid;
+  grid-template-columns:1.55fr 1fr;gap:28px;align-items:start;}
+.vcard{border-radius:14px;overflow:hidden;background:var(--deep);box-shadow:0 14px 34px var(--shadow);}
+.vframe{position:relative;width:100%;aspect-ratio:16/9;background:#06121A;}
+.vframe iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+.vempty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  text-align:center;padding:26px;color:#8BA7B8;font-size:13px;line-height:1.6;}
+.vmeta{padding:15px 19px;display:flex;justify-content:space-between;align-items:center;gap:12px;}
+.vmeta b{color:var(--on-deep);font-size:16px;font-weight:600;font-family:var(--font-display);}
+.vmeta span{font-family:var(--font-mono);font-size:10.5px;color:#8BA7B8;letter-spacing:.1em;white-space:nowrap;}
+.plh{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--slate);
+  margin:0 0 12px;text-transform:uppercase;}
+.pi{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);
+  border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;width:100%;text-align:left;
+  font-family:var(--font-body);color:var(--ink);transition:border-color .15s;}
+.pi:hover{border-color:var(--brand);}
+.pi:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+.pi.on{border-color:var(--brand);background:var(--tint-brand);}
+.pi .pn{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--surface-2);
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:10px;color:var(--body);}
+.pi.on .pn{background:var(--brand);color:#fff;border-color:var(--brand);}
+.pi b{font-size:13.5px;font-weight:600;display:block;line-height:1.35;}
+.pi span{font-size:11.5px;color:var(--slate);}
+
+/* ================= KARTU MODUL ================= */
+.mods{max-width:1200px;margin:0 auto;padding:56px 40px 18px;}
+.secthead{margin-bottom:26px;}
+.secthead h2{font-family:var(--font-display);font-size:30px;font-weight:700;margin:0 0 7px;letter-spacing:-.022em;}
+.secthead p{font-size:15px;color:var(--body);margin:0;}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:17px;}
+.card{border:1px solid var(--line);border-radius:14px;padding:23px 21px 21px;background:var(--surface);
+  text-align:left;font-family:var(--font-body);color:var(--ink);cursor:pointer;
+  transition:box-shadow .18s,border-color .18s,transform .18s;}
+.card:hover{box-shadow:0 10px 26px var(--shadow);border-color:var(--hairline);transform:translateY(-2px);}
+.card:focus-visible{outline:2px solid var(--brand);outline-offset:3px;}
+.atag{display:inline-flex;align-items:center;gap:7px;margin-bottom:15px;}
+.atag .hole{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--brand);opacity:.5;}
+.atag .lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.09em;color:var(--brand);
+  background:var(--tint-brand);border-radius:4px;padding:4px 9px;}
+.card h3{font-family:var(--font-display);font-size:18px;font-weight:700;margin:0 0 8px;
+  line-height:1.3;letter-spacing:-.014em;}
+.card p{font-size:13.5px;line-height:1.62;color:var(--body);margin:0 0 15px;}
+.card .go{font-size:13px;font-weight:600;color:var(--brand);}
+
+/* ================= AREA BACAAN ================= */
+.reading{max-width:1200px;margin:0 auto;padding:40px 40px 90px;
+  display:grid;grid-template-columns:216px 1fr;gap:44px;align-items:start;}
+.toc{position:sticky;top:92px;}
+.toch{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;color:var(--slate);
+  text-transform:uppercase;margin-bottom:12px;padding-left:13px;}
+.tocitem{display:block;width:100%;text-align:left;background:none;border:none;cursor:pointer;
+  padding:8px 13px;border-left:2px solid var(--line-soft);font-family:var(--font-body);
+  font-size:13px;line-height:1.45;color:var(--body);transition:color .15s,border-color .15s;}
+.tocitem:hover{color:var(--brand);border-left-color:var(--hairline);}
+.tocitem.on{color:var(--brand);border-left-color:var(--brand);font-weight:600;}
+.tocitem:focus-visible{outline:2px solid var(--brand);outline-offset:-2px;}
+.tocextra{margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft);}
+
+.docsec{padding-top:16px;}
+.docsec .sect{padding-top:42px;margin-top:38px;border-top:1px solid var(--line);}
+.docsec .sect:first-child{padding-top:0;margin-top:0;border-top:none;}
+.shead{margin-bottom:18px;}
+.shead .scode{display:inline-flex;align-items:center;gap:7px;margin-bottom:11px;}
+.shead .scode .hole{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--brand);opacity:.5;}
+.shead .scode .lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.09em;color:var(--brand);
+  background:var(--tint-brand);border-radius:4px;padding:4px 9px;}
+.shead .eyebrow{display:block;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;
+  color:var(--slate);text-transform:uppercase;margin-bottom:6px;}
+.shead h2{font-family:var(--font-display);font-size:30px;font-weight:700;margin:0;
+  line-height:1.2;letter-spacing:-.022em;}
+
+/* ================= BLOK KONTEN ================= */
+.blk{max-width:68ch;}
+.blk-paragraph{font-size:16px;line-height:1.78;color:var(--body);margin:0 0 18px;}
+.blk-list{margin:0 0 22px;padding:0;list-style:none;}
+.blk-list li{padding:12px 0;border-bottom:1px solid var(--line-soft);font-size:14.5px;
+  line-height:1.68;display:flex;gap:14px;color:var(--body);}
+.blk-list li:last-child{border-bottom:none;}
+.li-code{flex:0 0 150px;font-family:var(--font-mono);font-size:11px;color:var(--brand);
+  padding-top:3px;letter-spacing:.03em;}
+.blk-callout{background:var(--tint-green);border-left:3px solid var(--green);padding:16px 20px;
+  border-radius:0 8px 8px 0;margin:0 0 22px;}
+.blk-callout .callout-label{display:block;font-family:var(--font-mono);font-size:10px;
+  color:var(--green);text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px;}
+.blk-callout p{margin:0;font-size:14.5px;line-height:1.7;color:var(--ink);}
+
+.blk-images{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:0 0 24px;max-width:none;}
+.blk-images.full{grid-template-columns:1fr;}
+.img-card{margin:0;}
+.img-card img{width:100%;height:auto;display:block;border-radius:10px;border:1px solid var(--line);
+  background:var(--surface-2);}
+.img-card figcaption{font-size:12.5px;color:var(--slate);margin-top:9px;line-height:1.55;}
+@media (max-width:700px){.blk-images{grid-template-columns:1fr;}}
+
+.blk-accordion{margin:0 0 24px;border-top:1px solid var(--line);}
+.acc-item{border-bottom:1px solid var(--line);}
+.acc-item summary{list-style:none;cursor:pointer;padding:15px 36px 15px 0;position:relative;
+  font-size:15px;font-weight:600;color:var(--ink);line-height:1.5;}
+.acc-item summary::-webkit-details-marker{display:none;}
+.acc-item summary:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+.acc-item summary::after{content:"+";position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  font-family:var(--font-mono);font-size:18px;color:var(--brand);font-weight:400;}
+.acc-item[open] summary::after{content:"–";}
+.acc-item[open] summary{color:var(--brand);}
+.acc-body{padding:0 36px 18px 0;font-size:14.5px;line-height:1.75;color:var(--body);}
+.acc-body p{margin:0 0 12px;}
+.acc-link{display:inline-flex;align-items:center;gap:7px;color:var(--rust);font-size:13.5px;
+  font-weight:600;text-decoration:none;margin-top:4px;}
+.acc-link:hover{text-decoration:underline;}
+
+.blk-link{margin:0 0 18px;}
+.link-btn{display:inline-flex;align-items:center;gap:9px;background:var(--surface);
+  border:1.5px solid var(--line);border-radius:9px;padding:11px 18px;cursor:pointer;
+  color:var(--brand);font-family:var(--font-body);font-size:14px;font-weight:600;text-decoration:none;}
+.link-btn:hover{border-color:var(--brand);}
+.link-btn:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+.link-btn.page{color:var(--rust);}
+.link-btn.page:hover{border-color:var(--rust);}
+
+/* ================= KONTEN HALAMAN ================= */
+#pageView,#docsView{display:none;}
+#pageView.show{display:block;max-width:900px;margin:0 auto;padding:40px 40px 90px;}
+.backlink{display:inline-flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;
+  color:var(--slate);font-family:var(--font-mono);font-size:11.5px;letter-spacing:.08em;
+  text-transform:uppercase;padding:0 0 24px;}
+.backlink:hover{color:var(--brand);}
+.backlink:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+#pageView .peyebrow{display:block;font-family:var(--font-mono);font-size:11px;color:var(--green);
+  letter-spacing:.12em;text-transform:uppercase;margin-bottom:9px;}
+#pageView h1{font-family:var(--font-display);font-size:36px;font-weight:700;margin:0;
+  line-height:1.16;letter-spacing:-.026em;}
+.pmeta{font-family:var(--font-mono);font-size:11.5px;color:var(--slate);margin-top:13px;line-height:1.7;}
+.pmeta .sep{color:var(--brand);margin:0 9px;}
+.prule{width:58px;height:3px;background:var(--brand);border-radius:2px;margin:22px 0 30px;}
+.psib{margin-top:48px;padding-top:24px;border-top:1px solid var(--line);}
+.siblabel{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--slate);margin-bottom:12px;}
+
+/* dokumen tertanam di halaman */
+.pagedocs{margin-top:44px;padding-top:26px;border-top:1px solid var(--line);}
+.docemb{margin-bottom:26px;}
+.docemb h4{font-family:var(--font-display);font-size:18px;margin:0 0 4px;font-weight:700;}
+.docemb .dd{font-size:13px;color:var(--slate);margin:0 0 12px;line-height:1.6;}
+.pdfframe{width:100%;height:600px;border:1px solid var(--line);border-radius:10px;
+  background:var(--surface-2);overflow:hidden;}
+.pdfframe iframe{width:100%;height:100%;border:0;}
+.docopen{display:inline-block;margin-top:10px;font-size:13px;color:var(--brand);
+  font-weight:600;text-decoration:none;}
+.docopen:hover{text-decoration:underline;}
+
+/* ================= DOKUMEN REFERENSI ================= */
+#docsView.show{display:grid;grid-template-columns:1fr 310px;gap:28px;max-width:1280px;
+  margin:0 auto;padding:36px 40px 80px;align-items:start;}
+.readercol{min-width:0;}
+.readerhead{margin-bottom:16px;}
+.readerhead .eyebrow{font-family:var(--font-mono);font-size:11px;color:var(--green);
+  letter-spacing:.12em;text-transform:uppercase;}
+.readerhead h1{font-family:var(--font-display);font-size:27px;font-weight:700;margin:7px 0 4px;
+  line-height:1.25;letter-spacing:-.022em;}
+.readerhead p{font-size:13.5px;color:var(--slate);margin:0;line-height:1.6;}
+.readerframe{width:100%;height:76vh;min-height:520px;border:1px solid var(--line);
+  border-radius:12px;background:var(--surface-2);overflow:hidden;}
+.readerframe iframe{width:100%;height:100%;border:0;}
+.readerempty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--slate);
+  font-size:13.5px;text-align:center;padding:30px;line-height:1.6;}
+.doclistcol{position:sticky;top:92px;}
+.doclabel{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--slate);margin-bottom:12px;}
+.doclist{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden;
+  max-height:74vh;overflow-y:auto;}
+.docitem{display:flex;gap:11px;align-items:flex-start;width:100%;background:none;border:none;
+  border-bottom:1px solid var(--line-soft);text-align:left;padding:13px 14px;cursor:pointer;
+  font-family:var(--font-body);color:var(--ink);transition:background .14s;}
+.docitem:last-child{border-bottom:none;}
+.docitem:hover{background:var(--surface-2);}
+.docitem:focus-visible{outline:2px solid var(--brand);outline-offset:-2px;}
+.docitem.on{background:var(--tint-brand);box-shadow:inset 3px 0 0 var(--brand);}
+.docnum{flex:0 0 auto;font-family:var(--font-mono);font-size:10px;color:var(--slate);
+  border:1px solid var(--line);border-radius:4px;padding:2px 6px;margin-top:2px;}
+.docitem.on .docnum{color:var(--brand);border-color:var(--brand);}
+.docname{font-size:13.5px;font-weight:600;line-height:1.4;display:block;}
+.docsub{font-size:11.5px;color:var(--slate);margin-top:3px;line-height:1.45;display:block;}
+
+.loading{color:var(--slate);font-size:13.5px;padding:24px 0;font-family:var(--font-mono);}
+footer{border-top:1px solid var(--line);background:var(--bg-soft);}
+.fin{max-width:1200px;margin:0 auto;padding:30px 40px 46px;color:var(--slate);
+  font-size:12.5px;line-height:1.75;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+.fin a{color:var(--brand);text-decoration:none;}
+.fin a:hover{text-decoration:underline;}
+
+/* penyesuaian mode gelap */
+html[data-mode="dark"] .b1{background:var(--brand);color:#0C1A22;}
+html[data-mode="dark"] .b1:hover{background:var(--brand-2);}
+html[data-mode="dark"] .btn-admin{background:var(--brand);color:#0C1A22;}
+html[data-mode="dark"] .btn-admin:hover{background:var(--brand-2);color:#0C1A22;}
+html[data-mode="dark"] .logo .mk{background:var(--brand);color:#0C1A22;}
+html[data-mode="dark"] .vcard{background:var(--surface);}
+html[data-mode="dark"] .vmeta b{color:var(--ink);}
+html[data-mode="dark"] .pi.on .pn{color:#0C1A22;}
+
+@media (max-width:1040px){
+  .hero{grid-template-columns:1fr;gap:34px;}
+  .bwrap{grid-template-columns:1fr;}
+  .cards{grid-template-columns:repeat(2,1fr);}
+  .reading{grid-template-columns:1fr;gap:24px;}
+  .toc{position:relative;top:0;display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;}
+  .toch{display:none;}
+  .tocitem{white-space:nowrap;border-left:none;border-bottom:2px solid var(--line-soft);}
+  .tocitem.on{border-left:none;border-bottom-color:var(--brand);}
+  .tocextra{margin:0;padding:0;border:none;}
+  #docsView.show{grid-template-columns:1fr;}
+  .doclistcol{position:relative;top:0;}
+  .doclist{max-height:none;}
+}
+@media (max-width:720px){
+  .tin,.hero,.bwrap,.mods,.reading,.fin{padding-left:20px;padding-right:20px;}
+  #pageView.show,#docsView.show{padding-left:20px;padding-right:20px;}
+  h1.htitle{font-size:33px;} .cards{grid-template-columns:1fr;}
+  .tnav a.nl{display:none;} #pageView h1{font-size:27px;}
+  .li-code{flex-basis:110px;} .pdfframe{height:420px;}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="tin">
+    <a class="logo" href="#" id="homeLink">
+      <span class="mk">AM</span>
+      <span><b>Manajemen Aset</b><span id="brandSub">Portal sosialisasi internal</span></span>
+    </a>
+    <nav class="tnav">
+      <a class="nl" href="#materi">Materi</a>
+      <a class="nl" href="#video">Video</a>
+      <a class="nl" href="#dokumen">Dokumen</a>
+      <button class="iconbtn" id="modeBtn"><span data-icon>☾</span></button>
+      <a class="btn-admin" href="./admin.html">Masuk Admin</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- ================= BERANDA ================= -->
+  <div id="homeView">
+    <section class="hero">
+      <div>
+        <div class="pill"><i></i><span id="heroPill">Portal Sosialisasi Internal</span></div>
+        <h1 class="htitle" id="heroTitle">Memuat…</h1>
+        <p class="lead" id="heroLead"></p>
+        <div class="cta">
+          <button class="b1" id="ctaVideo">▶ Tonton Video Pengantar</button>
+          <button class="b2" id="ctaRead">Mulai dari Modul 01</button>
+        </div>
+      </div>
+      <div class="cyc" id="cycCard">
+        <div class="ch"><b id="cycTitle">Siklus Hidup Aset</b><span id="cycCount"></span></div>
+        <div id="cycSteps"></div>
+      </div>
+    </section>
+
+    <section class="band" id="video">
+      <div class="bwrap">
+        <div class="vcard">
+          <div class="vframe" id="videoFrame">
+            <div class="vempty" id="videoEmpty">Video belum diatur. Admin atau editor dapat menambahkannya melalui panel admin.</div>
+          </div>
+          <div class="vmeta"><b id="videoTitle">Rekaman Sosialisasi</b><span id="videoMeta"></span></div>
+        </div>
+        <div>
+          <p class="plh" id="plHead">Daftar Putar</p>
+          <div id="plItems"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mods" id="materi">
+      <div class="secthead">
+        <h2 id="modsTitle">Materi</h2>
+        <p id="modsSub">Disusun berurutan — mulai dari konsep paling dasar hingga penerapan sehari-hari.</p>
+      </div>
+      <div class="cards" id="cards"></div>
+    </section>
+
+    <section class="reading">
+      <nav class="toc" id="toc"></nav>
+      <div class="docsec" id="sections"><p class="loading">Memuat materi…</p></div>
+    </section>
+  </div>
+
+  <!-- ================= KONTEN HALAMAN ================= -->
+  <div id="pageView">
+    <button class="backlink" id="backBtn">← Kembali ke beranda</button>
+    <span class="peyebrow" id="pageEyebrow"></span>
+    <h1 id="pageTitle"></h1>
+    <div class="pmeta" id="pageMeta"></div>
+    <div class="prule"></div>
+    <div id="pageVideos"></div>
+    <div id="pageBlocks"></div>
+    <div id="pageDocs"></div>
+    <div class="psib" id="pageSib" style="display:none;">
+      <div class="siblabel">Halaman lain pada perikop ini</div>
+      <div id="pageSibItems"></div>
+    </div>
+  </div>
+
+  <!-- ================= DOKUMEN REFERENSI ================= -->
+  <div id="docsView">
+    <div class="readercol">
+      <button class="backlink" id="docsBackBtn">← Kembali ke beranda</button>
+      <div class="readerhead">
+        <span class="eyebrow">Dokumen Referensi</span>
+        <h1 id="readerTitle">Pilih dokumen</h1>
+        <p id="readerDesc"></p>
+      </div>
+      <div class="readerframe" id="readerFrame">
+        <div class="readerempty">Pilih salah satu dokumen di daftar sebelah kanan untuk mulai membaca.</div>
+      </div>
+      <a class="docopen" id="readerOpen" target="_blank" rel="noopener" style="display:none;">Buka di jendela baru ↗</a>
+    </div>
+    <div class="doclistcol">
+      <div class="doclabel" id="docLabel">Daftar Dokumen</div>
+      <div class="doclist" id="docList"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="fin">
+    <span>Materi sosialisasi internal mengenai konsep manajemen aset. Konten diperbarui melalui panel admin.</span>
+    <a href="./admin.html">Masuk sebagai admin / editor →</a>
+  </div>
+</footer>
+
+<script>
+/* ================= KONEKSI ================= */
+let supabaseClient = null;
+try {
+  if (window.SUPABASE_URL && !window.SUPABASE_URL.includes("GANTI-DENGAN") && window.supabase) {
+    const cleanUrl = String(window.SUPABASE_URL).trim().replace(/\/+$/, "");
+    const cleanKey = String(window.SUPABASE_ANON_KEY).trim();
+    supabaseClient = window.supabase.createClient(cleanUrl, cleanKey);
+  }
+} catch (e) { console.error('Gagal membuat koneksi Supabase:', e); }
+
+if (window.applyTheme) window.applyTheme(window.DEFAULT_THEME, window.getThemeMode());
+
+let SECTIONS = [], PAGES = [], VIDEOS = [], DOCS = [], SETTINGS = {};
+
+const $ = id => document.getElementById(id);
+const homeView = $('homeView'), pageView = $('pageView'), docsView = $('docsView');
+
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function resolveImageUrl(raw){
+  const url = String(raw || '').trim();
+  if (!url) return '';
+  if (url.includes('drive.google.com')){
+    const m = url.match(/[-\w]{25,}/);
+    if (m) return 'https://drive.google.com/thumbnail?id=' + m[0] + '&sz=w1600';
+  }
+  return url;
+}
+function drivePreviewUrl(fileId){
+  const id = String(fileId || '').trim();
+  if (/^https?:\/\//i.test(id) && !id.includes('drive.google.com')) return id;
+  const m = id.match(/[-\w]{25,}/);
+  return 'https://drive.google.com/file/d/' + encodeURIComponent(m ? m[0] : id) + '/preview';
+}
+function formatDate(iso){
+  if (!iso) return '';
+  try { return new Date(iso).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' }); }
+  catch(e){ return ''; }
+}
+/* kalimat pertama dari blok paragraf pertama — untuk ringkasan kartu */
+function summarize(blocks, max){
+  if (!Array.isArray(blocks)) return '';
+  const p = blocks.find(b => b && b.type === 'paragraph' && b.text);
+  if (!p) return '';
+  let s = String(p.text).trim();
+  if (s.length > max){
+    const cut = s.slice(0, max);
+    const sp = cut.lastIndexOf(' ');
+    s = (sp > max * 0.6 ? cut.slice(0, sp) : cut) + '…';
+  }
+  return s;
+}
+
+/* ================= PERAKIT BLOK ================= */
+function renderBlocks(blocks){
+  if (!Array.isArray(blocks)) return '';
+  return blocks.map(b => {
+    if (!b || !b.type) return '';
+    switch (b.type) {
+      case 'paragraph':
+        return `<div class="blk"><p class="blk-paragraph">${esc(b.text)}</p></div>`;
+
+      case 'list': {
+        const items = Array.isArray(b.items) ? b.items : [];
+        if (!items.length) return '';
+        return `<div class="blk"><ul class="blk-list">` + items.map(pair => {
+          const label = Array.isArray(pair) ? pair[0] : (pair.label || '');
+          const text  = Array.isArray(pair) ? pair[1] : (pair.text  || '');
+          return `<li><span class="li-code">${esc(label)}</span><span>${esc(text)}</span></li>`;
+        }).join('') + `</ul></div>`;
+      }
+
+      case 'callout':
+        return `<div class="blk"><div class="blk-callout">
+          <span class="callout-label">${esc(b.label || 'Catatan')}</span>
+          <p>${esc(b.text)}</p></div></div>`;
+
+      case 'images': {
+        const items = Array.isArray(b.items) ? b.items.filter(x => x && x.url) : [];
+        if (!items.length) return '';
+        const full = b.layout === 'full';
+        return `<div class="blk-images${full ? ' full' : ''}">` + items.map(img => `
+          <figure class="img-card">
+            <img src="${esc(resolveImageUrl(img.url))}" alt="${esc(img.caption || '')}" loading="lazy">
+            ${img.caption ? `<figcaption>${esc(img.caption)}</figcaption>` : ''}
+          </figure>`).join('') + `</div>`;
+      }
+
+      case 'accordion': {
+        const items = Array.isArray(b.items) ? b.items.filter(x => x && x.title) : [];
+        if (!items.length) return '';
+        return `<div class="blk"><div class="blk-accordion">` + items.map(it => {
+          const paras = String(it.content || '').split('\n').filter(Boolean)
+            .map(p => `<p>${esc(p)}</p>`).join('');
+          let link = '';
+          if (it.page_id){
+            const pg = PAGES.find(p => p.id === it.page_id);
+            if (pg) link = `<a class="acc-link" href="#halaman/${esc(pg.slug)}">${esc(it.link_label || pg.title)} →</a>`;
+          }
+          return `<details class="acc-item"><summary>${esc(it.title)}</summary>
+            <div class="acc-body">${paras}${link}</div></details>`;
+        }).join('') + `</div></div>`;
+      }
+
+      case 'external_link':
+        if (!b.url) return '';
+        return `<div class="blk blk-link"><a class="link-btn" href="${esc(b.url)}" target="_blank" rel="noopener">${esc(b.label || 'Buka tautan')} ↗</a></div>`;
+
+      case 'page_link': {
+        const page = PAGES.find(p => p.id === b.page_id);
+        if (!page) return '';
+        return `<div class="blk blk-link"><a class="link-btn page" href="#halaman/${esc(page.slug)}">${esc(b.label || page.title)} →</a></div>`;
+      }
+      default: return '';
+    }
+  }).join('');
+}
+
+/* ================= BERANDA ================= */
+function renderHero(){
+  const t = SETTINGS.hero_title || 'Setiap aset punya cerita.|Tugas kita *menjaganya tetap bernilai*.';
+  const html = esc(t).replace(/\|/g, '<br>').replace(/\*(.+?)\*/g, '<em>$1</em>');
+  $('heroTitle').innerHTML = html;
+  $('heroLead').textContent = SETTINGS.hero_lead ||
+    'Materi sosialisasi manajemen aset yang disusun runut — dari konsep dasar hingga praktik kepatuhan — lengkap dengan rekaman video dan dokumen rujukan untuk seluruh unit kerja.';
+  if (SETTINGS.hero_pill) $('heroPill').textContent = SETTINGS.hero_pill;
+  if (SETTINGS.brand_sub) $('brandSub').textContent = SETTINGS.brand_sub;
+
+  /* kartu siklus hidup */
+  let stages = [];
+  const hasSetting = Object.prototype.hasOwnProperty.call(SETTINGS, 'hero_stages');
+  try { stages = JSON.parse(SETTINGS.hero_stages || '[]'); } catch(e){ stages = []; }
+  if (!Array.isArray(stages)) stages = [];
+  if (hasSetting && !stages.length){
+    $('cycCard').style.display = 'none';
+    const hero = document.querySelector('.hero');
+    if (hero) hero.style.gridTemplateColumns = '1fr';
+    return;
+  }
+  if (!stages.length){
+    stages = [
+      { title:'Perencanaan', desc:'Menentukan kebutuhan aset' },
+      { title:'Pengadaan',   desc:'Pembelian, sewa, penerimaan' },
+      { title:'Pemanfaatan', desc:'Penggunaan sesuai fungsi' },
+      { title:'Pemeliharaan',desc:'Perawatan berkala' },
+      { title:'Penghapusan', desc:'Pelepasan aset tak ekonomis' }
+    ];
+  }
+  $('cycTitle').textContent = SETTINGS.hero_cyc_title || 'Siklus Hidup Aset';
+  $('cycCount').textContent = stages.length + ' TAHAP';
+  const tints = ['var(--st1)','var(--st2)','var(--st3)','var(--st4)','var(--st5)'];
+  $('cycSteps').innerHTML = stages.map((s, i) => `
+    ${i ? '<div class="conn"></div>' : ''}
+    <div class="step">
+      <div class="sn" style="background:${tints[i % tints.length]};color:var(--st-ink)">${String(i+1).padStart(2,'0')}</div>
+      <div><b>${esc(s.title)}</b><span>${esc(s.desc || '')}</span></div>
+    </div>`).join('');
+}
+
+function renderSections(){
+  const cards = $('cards'), toc = $('toc'), body = $('sections');
+  cards.innerHTML = ''; toc.innerHTML = ''; body.innerHTML = '';
+
+  if (!SECTIONS.length){
+    body.innerHTML = '<p class="loading">Belum ada materi.</p>';
+    $('modsTitle').textContent = 'Materi';
+    return;
+  }
+  $('modsTitle').textContent = SETTINGS.mods_title || (SECTIONS.length + ' modul materi');
+
+  SECTIONS.forEach((s, i) => {
+    /* kartu */
+    const c = document.createElement('button');
+    c.className = 'card';
+    c.innerHTML = `
+      <span class="atag"><span class="hole"></span><span class="lbl">${esc(s.code)}</span></span>
+      <h3>${esc(s.title)}</h3>
+      <p>${esc(summarize(s.blocks, 128))}</p>
+      <span class="go">Baca modul →</span>`;
+    c.addEventListener('click', () => jumpTo(i));
+    cards.appendChild(c);
+
+    /* daftar isi */
+    const t = document.createElement('button');
+    t.className = 'tocitem';
+    t.id = 'toc-' + i;
+    t.textContent = s.title;
+    t.addEventListener('click', () => jumpTo(i));
+    toc.appendChild(t);
+
+    /* isi */
+    const sec = document.createElement('section');
+    sec.className = 'sect';
+    sec.id = 'sec-' + i;
+    sec.innerHTML = `
+      <div class="shead">
+        <span class="scode"><span class="hole"></span><span class="lbl">${esc(s.code)}</span></span>
+        ${s.eyebrow ? `<span class="eyebrow">${esc(s.eyebrow)}</span>` : ''}
+        <h2>${esc(s.title)}</h2>
+      </div>
+      ${renderBlocks(s.blocks)}`;
+    body.appendChild(sec);
+  });
+
+  /* tautan dokumen di akhir daftar isi */
+  if (DOCS.length){
+    const extra = document.createElement('div');
+    extra.className = 'tocextra';
+    const b = document.createElement('button');
+    b.className = 'tocitem';
+    b.textContent = 'Dokumen Referensi';
+    b.addEventListener('click', () => { location.hash = '#dokumen'; });
+    extra.appendChild(b);
+    toc.appendChild(extra);
+  }
+
+  observeSections();
+}
+
+function jumpTo(i){
+  goHome();
+  setTimeout(() => {
+    const el = $('sec-' + i);
+    if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+  }, 40);
+}
+
+let observer = null;
+function observeSections(){
+  if (observer) observer.disconnect();
+  observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting && homeView.style.display !== 'none'){
+        const i = e.target.id.split('-')[1];
+        document.querySelectorAll('.tocitem').forEach(x => x.classList.remove('on'));
+        const a = $('toc-' + i);
+        if (a) a.classList.add('on');
+      }
+    });
+  }, { rootMargin:'-18% 0px -70% 0px' });
+  document.querySelectorAll('.sect').forEach(s => observer.observe(s));
+}
+
+/* ================= VIDEO ================= */
+function playVideo(v){
+  $('videoFrame').innerHTML =
+    `<iframe src="${esc(drivePreviewUrl(v.drive_file_id))}" allow="autoplay" allowfullscreen title="${esc(v.title)}"></iframe>`;
+  $('videoTitle').textContent = v.title;
+  $('videoMeta').textContent = v.description || '';
+}
+
+function renderHomeVideos(){
+  const list = VIDEOS.filter(v => v.show_on_home !== false);
+  const band = $('video');
+  if (!list.length){ band.style.display = 'none'; return; }
+  band.style.display = 'block';
+  playVideo(list[0]);
+
+  const items = $('plItems');
+  if (list.length < 2){ $('plHead').style.display = 'none'; items.innerHTML = ''; return; }
+  $('plHead').style.display = 'block';
+  $('plHead').textContent = `Daftar Putar · ${list.length} video`;
+  items.innerHTML = '';
+  list.forEach((v, i) => {
+    const b = document.createElement('button');
+    b.className = 'pi' + (i === 0 ? ' on' : '');
+    b.innerHTML = `<span class="pn">${i+1}</span><span><b>${esc(v.title)}</b>${v.description ? `<span>${esc(v.description)}</span>` : ''}</span>`;
+    b.addEventListener('click', () => {
+      playVideo(v);
+      items.querySelectorAll('.pi').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+    });
+    items.appendChild(b);
+  });
+}
+
+/* ================= NAVIGASI ================= */
+function goHome(){
+  pageView.classList.remove('show');
+  docsView.classList.remove('show');
+  homeView.style.display = 'block';
+  if (location.hash && (location.hash.startsWith('#halaman/') || location.hash.startsWith('#dokumen')))
+    history.replaceState(null, '', location.pathname + location.search);
+}
+
+function showPage(slug){
+  const page = PAGES.find(p => p.slug === slug);
+  if (!page){ goHome(); return; }
+  const parent = SECTIONS.find(s => s.id === page.section_id);
+
+  $('pageEyebrow').textContent = page.eyebrow || (parent ? parent.title : '');
+  $('pageTitle').textContent = page.title;
+
+  const posted = formatDate(page.created_at), edited = formatDate(page.updated_at);
+  const changed = page.created_at && page.updated_at &&
+    (new Date(page.updated_at) - new Date(page.created_at) > 60000);
+  $('pageMeta').innerHTML = (posted ? `Diposting ${esc(posted)}` : '') +
+    (changed && edited ? `<span class="sep">·</span>Diperbarui ${esc(edited)}` : '');
+
+  /* video halaman — di bagian atas */
+  const vids = VIDEOS.filter(v => v.page_id === page.id);
+  const pv = $('pageVideos');
+  pv.innerHTML = vids.length ? `
+    <div class="vcard" style="margin-bottom:32px;">
+      <div class="vframe"><iframe src="${esc(drivePreviewUrl(vids[0].drive_file_id))}" allow="autoplay" allowfullscreen title="${esc(vids[0].title)}"></iframe></div>
+      <div class="vmeta"><b>${esc(vids[0].title)}</b><span>${vids.length > 1 ? vids.length + ' REKAMAN' : ''}</span></div>
+    </div>
+    ${vids.length > 1 ? `<p class="plh">Rekaman lain pada halaman ini</p><div id="pvList">${
+      vids.map((v,i) => `<button class="pi${i===0?' on':''}" data-vid="${esc(v.drive_file_id)}" data-t="${esc(v.title)}"><span class="pn">${i+1}</span><span><b>${esc(v.title)}</b>${v.description?`<span>${esc(v.description)}</span>`:''}</span></button>`).join('')
+    }</div>` : ''}` : '';
+
+  if (vids.length > 1){
+    pv.querySelectorAll('.pi').forEach(btn => {
+      btn.addEventListener('click', () => {
+        pv.querySelector('.vframe').innerHTML =
+          `<iframe src="${drivePreviewUrl(btn.dataset.vid)}" allow="autoplay" allowfullscreen></iframe>`;
+        pv.querySelector('.vmeta b').textContent = btn.dataset.t;
+        pv.querySelectorAll('.pi').forEach(x => x.classList.remove('on'));
+        btn.classList.add('on');
+      });
+    });
+  }
+
+  $('pageBlocks').innerHTML = renderBlocks(page.blocks);
+
+  /* dokumen halaman — di bagian akhir */
+  const docs = DOCS.filter(d => d.page_id === page.id);
+  $('pageDocs').innerHTML = docs.length ? `
+    <div class="pagedocs">
+      <div class="siblabel">Dokumen Referensi Terkait</div>
+      ${docs.map(d => `<div class="docemb">
+        <h4>${esc(d.title)}</h4>
+        ${d.description ? `<p class="dd">${esc(d.description)}</p>` : ''}
+        <div class="pdfframe"><iframe src="${esc(drivePreviewUrl(d.drive_file_id))}" loading="lazy" title="${esc(d.title)}"></iframe></div>
+        <a class="docopen" href="#dokumen/${esc(d.id)}">Buka di pembaca dokumen →</a>
+      </div>`).join('')}
+    </div>` : '';
+
+  const sibs = PAGES.filter(p => p.section_id === page.section_id && p.id !== page.id);
+  const sb = $('pageSib');
+  if (sibs.length){
+    sb.style.display = 'block';
+    $('pageSibItems').innerHTML = sibs.map(p =>
+      `<div class="blk blk-link"><a class="link-btn page" href="#halaman/${esc(p.slug)}">${esc(p.title)} →</a></div>`).join('');
+  } else sb.style.display = 'none';
+
+  homeView.style.display = 'none';
+  docsView.classList.remove('show');
+  pageView.classList.add('show');
+  window.scrollTo(0, 0);
+}
+
+/* ================= DOKUMEN REFERENSI ================= */
+function openDocument(d){
+  $('readerTitle').textContent = d.title;
+  $('readerDesc').textContent = d.description || '';
+  $('readerFrame').innerHTML = `<iframe src="${esc(drivePreviewUrl(d.drive_file_id))}" title="${esc(d.title)}"></iframe>`;
+  const o = $('readerOpen');
+  o.href = drivePreviewUrl(d.drive_file_id).replace('/preview','/view');
+  o.style.display = 'inline-block';
+  document.querySelectorAll('.docitem').forEach(x => x.classList.remove('on'));
+  const btn = document.querySelector(`.docitem[data-doc="${d.id}"]`);
+  if (btn) btn.classList.add('on');
+}
+
+function renderDocList(){
+  const el = $('docList');
+  $('docLabel').textContent = `Daftar Dokumen · ${DOCS.length}`;
+  if (!DOCS.length){
+    el.innerHTML = '<div style="padding:18px;font-size:13px;color:var(--slate);line-height:1.6;">Belum ada dokumen yang diunggah.</div>';
+    return;
+  }
+  el.innerHTML = DOCS.map((d, i) => {
+    const pg = d.page_id ? PAGES.find(p => p.id === d.page_id) : null;
+    return `<button class="docitem" data-doc="${esc(d.id)}">
+      <span class="docnum">${i+1}</span>
+      <span><span class="docname">${esc(d.title)}</span>
+      ${d.description ? `<span class="docsub">${esc(d.description)}</span>` : ''}
+      ${pg ? `<span class="docsub">Terkait: ${esc(pg.title)}</span>` : ''}</span></button>`;
+  }).join('');
+  el.querySelectorAll('.docitem').forEach(b => {
+    b.addEventListener('click', () => { location.hash = '#dokumen/' + b.dataset.doc; });
+  });
+}
+
+function showDocs(id){
+  homeView.style.display = 'none';
+  pageView.classList.remove('show');
+  docsView.classList.add('show');
+  const d = id ? DOCS.find(x => x.id === id) : DOCS[0];
+  if (d) openDocument(d);
+  window.scrollTo(0, 0);
+}
+
+/* ================= ROUTING ================= */
+function handleRoute(){
+  const h = location.hash;
+  if (h.startsWith('#halaman/')) showPage(decodeURIComponent(h.replace('#halaman/','')));
+  else if (h.startsWith('#dokumen/')) showDocs(decodeURIComponent(h.replace('#dokumen/','')));
+  else if (h === '#dokumen') showDocs(null);
+  else {
+    pageView.classList.remove('show');
+    docsView.classList.remove('show');
+    homeView.style.display = 'block';
+  }
+}
+window.addEventListener('hashchange', handleRoute);
+
+$('backBtn').addEventListener('click', goHome);
+$('docsBackBtn').addEventListener('click', goHome);
+$('homeLink').addEventListener('click', e => { e.preventDefault(); goHome(); window.scrollTo({top:0,behavior:'smooth'}); });
+$('ctaVideo').addEventListener('click', () => {
+  goHome();
+  setTimeout(() => $('video').scrollIntoView({ behavior:'smooth', block:'start' }), 40);
+});
+$('ctaRead').addEventListener('click', () => jumpTo(0));
+
+/* ================= CADANGAN ================= */
+const FALLBACK = [{
+  id:'fallback', code:'AST-01', eyebrow:'Perikop 01', title:'Apa Itu Manajemen Aset',
+  blocks:[{ type:'paragraph', text:'Manajemen aset adalah rangkaian pendekatan terkoordinasi untuk merencanakan, memperoleh, memanfaatkan, memelihara, dan pada akhirnya melepas aset organisasi secara optimal.' }]
+}];
+
+/* ================= MUAT DATA ================= */
+async function loadContent(){
+  if (window.loadTheme) await window.loadTheme(supabaseClient);
+  if (window.initModeToggle) window.initModeToggle($('modeBtn'));
+
+  if (!supabaseClient){
+    SECTIONS = FALLBACK;
+    renderHero(); renderSections(); renderDocList();
+    $('video').style.display = 'none';
+    return;
+  }
+  try{
+    const [sec, pg, vid, doc, st] = await Promise.all([
+      supabaseClient.from('sections').select('*').order('sort_order', { ascending:true }),
+      supabaseClient.from('pages').select('*').order('sort_order', { ascending:true }),
+      supabaseClient.from('videos').select('*').order('sort_order', { ascending:true }),
+      supabaseClient.from('documents').select('*').order('sort_order', { ascending:true }),
+      supabaseClient.from('site_settings').select('key,value')
+    ]);
+    if (sec.error) throw sec.error;
+
+    PAGES  = pg.data  || [];
+    VIDEOS = vid.data || [];
+    DOCS   = doc.data || [];
+    (st.data || []).forEach(r => { SETTINGS[r.key] = r.value; });
+    SECTIONS = (sec.data && sec.data.length) ? sec.data : FALLBACK;
+
+    renderHero();
+    renderSections();
+    renderHomeVideos();
+    renderDocList();
+    handleRoute();
+  } catch(err){
+    console.error(err);
+    SECTIONS = FALLBACK;
+    renderHero(); renderSections(); renderDocList();
+  }
+}
+
+loadContent();
+</script>
+</body>
+</html>
