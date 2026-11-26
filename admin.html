@@ -85,7 +85,8 @@
   .whoami{display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--slate);}
   .role-chip{font-family:var(--font-mono); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; padding:3px 9px; border-radius:20px; font-weight:600;}
   .role-admin{background:var(--tint-rust-2); color:var(--rust);}
-  .role-editor{background:var(--line-soft); color:var(--brass);}
+  .role-kontributor{background:var(--line-soft); color:var(--brass);}
+  .role-supporter{background:var(--tint-green); color:var(--green);}
   .role-viewer{background:var(--tint-slate); color:var(--slate);}
   .btn-logout{background:none; border:1px solid var(--line-ink); color:var(--ink); padding:7px 13px; border-radius:4px; font-size:12.5px; cursor:pointer;}
   .btn-logout:hover{background:var(--parchment-dim);}
@@ -246,6 +247,12 @@
   html[data-mode="dark"] .acct-rows b{color:var(--ink);}
   html[data-mode="dark"] .pv-side{background:var(--deep);}
 
+  .fico{flex:0 0 auto; width:34px; height:34px; border-radius:7px; display:inline-flex;
+    align-items:center; justify-content:center; font-family:var(--font-mono); font-size:9.5px;
+    font-weight:700; color:#fff; letter-spacing:.02em;}
+  .fico.sm{width:27px; height:27px; font-size:8.5px; border-radius:6px;}
+  .rolehint{font-size:11.5px; color:var(--slate); line-height:1.5; margin-top:4px;}
+
   .modebtn{display:inline-flex; align-items:center; gap:7px; background:var(--surface);
     border:1px solid var(--line-ink); border-radius:6px; padding:7px 12px; font-size:12.5px;
     cursor:pointer; color:var(--ink); font-family:var(--font-body);}
@@ -358,7 +365,7 @@
     <div class="panel" id="panelDokumen" style="display:none;">
       <div class="viewer-banner" id="bannerDokumen" style="display:none;">Anda masuk sebagai viewer — mode lihat-saja.</div>
       <div class="panel-head">
-        <p class="hint" style="margin:0;">Dokumen PDF yang bisa dibaca langsung di situs. Urutan daftar menentukan urutan tampil.</p>
+        <p class="hint" style="margin:0;">Semua jenis berkas: PDF, Word, Excel, PowerPoint, dan lainnya. Di situs publik, PDF tampil pada daftar <b>Dokumen PDF</b> dan sisanya pada daftar <b>Berkas Lain</b>. Urutan daftar menentukan urutan tampil.</p>
         <button class="btn btn-primary" id="addDocBtn" style="display:none;">+ Tambah Dokumen</button>
       </div>
       <div id="docForm"></div>
@@ -530,7 +537,7 @@ function esc(s){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-function canEdit(){ return currentProfile && (currentProfile.role === 'admin' || currentProfile.role === 'editor'); }
+function canEdit(){ return currentProfile && (currentProfile.role === 'admin' || currentProfile.role === 'kontributor'); }
 function isAdmin(){ return currentProfile && currentProfile.role === 'admin'; }
 function showAuthMsg(text, type){ authMsg.textContent = text; authMsg.className = 'auth-msg show ' + type; }
 
@@ -589,7 +596,7 @@ async function loadProfileAndShowApp(user){
   });
   document.getElementById('tabPenggunaBtn').style.display = isAdmin() ? 'block' : 'none';
   document.getElementById('tabTemaBtn').style.display = isAdmin() ? 'block' : 'none';
-  document.getElementById('tabBerandaBtn').style.display = canEdit() ? 'block' : 'none';
+  document.getElementById('tabBerandaBtn').style.display = isAdmin() ? 'block' : 'none';
   document.getElementById('tabBerkasBtn').style.display = canEdit() ? 'block' : 'none';
   document.getElementById('addUserBtn').style.display = isAdmin() ? 'inline-block' : 'none';
 
@@ -637,7 +644,8 @@ document.querySelectorAll('.tabbtn').forEach(btn => {
    ========================================================= */
 const BLOCK_LABELS = {
   paragraph:'Paragraf', list:'Daftar Poin', callout:'Catatan / Callout',
-  images:'Galeri Gambar', accordion:'Harmonika', external_link:'Tautan URL Lain',
+  images:'Galeri Gambar', video:'Video', document:'Dokumen / Berkas',
+  accordion:'Harmonika', external_link:'Tautan URL Lain',
   page_link:'Tautan ke Konten Halaman'
 };
 
@@ -651,6 +659,8 @@ function newBlock(type){
     case 'callout': return { type, label:'Catatan', text:'' };
     case 'images': return { type, layout:'half', items:[{url:'',caption:''},{url:'',caption:''}] };
     case 'accordion': return { type, items:[{title:'',content:'',page_id:'',link_label:''}] };
+    case 'video': return { type, file_id:'', title:'', caption:'' };
+    case 'document': return { type, file_id:'', title:'', kind:'pdf', caption:'', embed:true };
     case 'external_link': return { type, url:'', label:'Buka tautan' };
     case 'page_link': return { type, page_id:'', label:'Baca materi selengkapnya' };
   }
@@ -682,6 +692,17 @@ window.blkRemove = function(i){
   blockState.splice(i,1); drawBlocks();
 };
 window.blkAdd = function(type){ blockState.push(newBlock(type)); drawBlocks(); };
+
+/* Unggah berkas langsung ke blok video / dokumen */
+window.uploadForBlock = function(i, kind){
+  window.uploadFor(kind, a => {
+    const link = 'https://drive.google.com/file/d/' + a.drive_file_id + '/view';
+    blockState[i].file_id = link;
+    if (!blockState[i].title) blockState[i].title = a.name;
+    if (kind === 'document') blockState[i].kind = kindFromName(a.name);
+    drawBlocks();
+  });
+};
 
 /* Unggah gambar langsung ke baris gambar tertentu di editor blok */
 window.uploadForImage = function(i, j){
@@ -757,6 +778,41 @@ function drawBlocks(){
         + `<button class="add-sub" onclick="blkAddSub(${i})">+ Tambah gambar</button>`;
     }
 
+    else if (b.type === 'video'){
+      fields = `<label>Tautan video Google Drive</label>
+        <div class="link-with-upload">
+          <input type="text" id="vblk-${i}" value="${esc(b.file_id)}" placeholder="https://drive.google.com/file/d/XXXXXXX/view" oninput="blkUpdate(${i},'file_id',this.value)">
+          <button type="button" class="btn-upload" onclick="uploadForBlock(${i},'video')">&uarr; Unggah</button>
+        </div>
+        <label>Judul video (opsional)</label>
+        <input type="text" value="${esc(b.title)}" placeholder="Sesi 02 — Siklus Hidup Aset" oninput="blkUpdate(${i},'title',this.value)">
+        <label>Keterangan di bawah video (opsional)</label>
+        <input type="text" value="${esc(b.caption)}" placeholder="Rekaman sosialisasi, durasi 14 menit" oninput="blkUpdate(${i},'caption',this.value)">`;
+    }
+
+    else if (b.type === 'document'){
+      const bk = FILE_KINDS[b.kind] ? b.kind : 'pdf';
+      fields = `<label>Tautan berkas Google Drive</label>
+        <div class="link-with-upload">
+          <input type="text" id="dblk-${i}" value="${esc(b.file_id)}" placeholder="https://drive.google.com/file/d/XXXXXXX/view" oninput="blkUpdate(${i},'file_id',this.value)">
+          <button type="button" class="btn-upload" onclick="uploadForBlock(${i},'document')">&uarr; Unggah</button>
+        </div>
+        <label>Judul berkas</label>
+        <input type="text" value="${esc(b.title)}" placeholder="Pedoman Verifikasi Aset" oninput="blkUpdate(${i},'title',this.value)">
+        <label>Jenis berkas</label>
+        <select onchange="blkUpdate(${i},'kind',this.value); drawBlocks();">
+          ${Object.keys(FILE_KINDS).map(k => `<option value="${k}" ${bk===k?'selected':''}>${FILE_KINDS[k].name}${k==='other'?' lainnya (hanya unduh)':''}</option>`).join('')}
+        </select>
+        <label>Keterangan (opsional)</label>
+        <input type="text" value="${esc(b.caption)}" placeholder="Revisi 02 · 24 halaman" oninput="blkUpdate(${i},'caption',this.value)">
+        ${bisaDitampilkan(bk) ? `<div class="opt-box" style="margin-top:4px;">
+          <label class="check-row">
+            <input type="checkbox" ${b.embed !== false ? 'checked' : ''} onchange="blkUpdate(${i},'embed',this.checked)">
+            <span><b>Tampilkan isinya langsung di halaman</b><br><small>Jika dimatikan, hanya muncul tombol unduh.</small></span>
+          </label></div>`
+        : `<p class="hint" style="margin-top:-6px;">Jenis berkas ini tidak dapat ditampilkan di halaman — pengunjung hanya mendapat tombol unduh.</p>`}`;
+    }
+
     else if (b.type === 'accordion'){
       fields = `<label>Poin harmonika (diklik untuk membuka detail)</label>` + b.items.map((it, j) => {
         const pgOpts = PAGES.map(p => `<option value="${esc(p.id)}" ${p.id === it.page_id ? 'selected' : ''}>${esc(p.title)}</option>`).join('');
@@ -786,7 +842,7 @@ function drawBlocks(){
     </div>`;
   }).join('');
 
-  const types = ['paragraph','list','callout','images','accordion','external_link'];
+  const types = ['paragraph','list','callout','images','video','document','accordion','external_link'];
   if (blockAllowPageLink) types.push('page_link');
 
   zone.innerHTML = `
@@ -803,6 +859,8 @@ function cleanBlocks(){
     if (b.type === 'callout') return b.text.trim();
     if (b.type === 'external_link') return b.url.trim();
     if (b.type === 'page_link') return b.page_id;
+    if (b.type === 'video') return String(b.file_id || '').trim();
+    if (b.type === 'document') return String(b.file_id || '').trim();
     if (b.type === 'list'){ b.items = b.items.filter(p => p[0].trim() || p[1].trim()); return b.items.length; }
     if (b.type === 'images'){ b.items = b.items.filter(x => x.url.trim()); return b.items.length; }
     if (b.type === 'accordion'){ b.items = b.items.filter(x => x.title.trim()); return b.items.length; }
@@ -1117,12 +1175,14 @@ function renderDocList(){
     const badges = pg
       ? `<a class="badge link" href="./index.html#halaman/${esc(pg.slug)}" target="_blank" rel="noopener">↗ Halaman: ${esc(pg.title)}</a>`
       : `<span class="badge off">Tidak ditempatkan di halaman</span>`;
+    const kk = FILE_KINDS[d.file_kind] ? d.file_kind : 'pdf';
     return `<div class="card"><div class="card-row">
       <div>
         <span class="card-code">Urutan ${i+1}</span>
-        <h3>${esc(d.title)}</h3>
+        <h3 style="display:flex;align-items:center;gap:10px;">${icoHtml(kk, true)}<span>${esc(d.title)}</span></h3>
         <p>${esc(d.description || '')}</p>
         <div class="badges">${badges}
+          <span class="badge off">${FILE_KINDS[kk].name}${bisaDitampilkan(kk) ? '' : ' · hanya unduh'}</span>
           <a class="badge link" href="./index.html#dokumen/${esc(d.id)}" target="_blank" rel="noopener">↗ Buka di pembaca</a>
         </div>
       </div>
@@ -1143,12 +1203,25 @@ function openDocForm(doc){
       <input type="text" id="d_title" value="${doc ? esc(doc.title) : ''}" placeholder="Pedoman Verifikasi Aset 2026">
       <label>Keterangan singkat (opsional)</label>
       <input type="text" id="d_desc" value="${doc ? esc(doc.description||'') : ''}" placeholder="Revisi 02 · 24 halaman">
-      <label>Tautan PDF (Google Drive atau URL langsung)</label>
+      <label>Tautan berkas (Google Drive atau URL langsung)</label>
       <div class="link-with-upload">
         <input type="text" id="d_link" value="${doc ? esc(doc.drive_file_id) : ''}" placeholder="https://drive.google.com/file/d/XXXXXXX/view">
-        <button type="button" class="btn-upload" onclick="uploadFor('document', a => { document.getElementById('d_link').value = a.drive_file_id; if(!document.getElementById('d_title').value.trim()) document.getElementById('d_title').value = a.name; })">&uarr; Unggah</button>
+        <button type="button" class="btn-upload" onclick="uploadFor('document', a => {
+          document.getElementById('d_link').value = a.drive_file_id;
+          if(!document.getElementById('d_title').value.trim()) document.getElementById('d_title').value = a.name;
+          const sel = document.getElementById('d_kind');
+          if (sel) sel.value = kindFromName(a.name);
+          const fn = document.getElementById('d_fname'); if (fn) fn.value = a.name;
+        })">&uarr; Unggah</button>
       </div>
-      <p class="hint" style="margin-top:2px;">Tempel tautan, atau klik <b>Unggah</b> untuk mengirim PDF langsung dari komputer.</p>
+      <p class="hint" style="margin-top:2px;">Semua jenis berkas diterima: PDF, Word, Excel, PowerPoint, dan lainnya (dwg, cdr, vsd, zip).</p>
+
+      <label>Jenis berkas</label>
+      <select id="d_kind">
+        ${Object.keys(FILE_KINDS).map(k => `<option value="${k}" ${doc && doc.file_kind === k ? 'selected' : ''}>${FILE_KINDS[k].name}${k === 'other' ? ' lainnya (hanya bisa diunduh)' : ''}</option>`).join('')}
+      </select>
+      <input type="hidden" id="d_fname" value="${doc ? esc(doc.file_name || '') : ''}">
+      <p class="hint" style="margin-top:-8px;">Terisi otomatis saat mengunggah. PDF, Word, Excel, dan PowerPoint dapat dibaca langsung di situs; jenis lain hanya disediakan tombol unduh.</p>
 
       <label>Tampilkan pada Konten Halaman (opsional)</label>
       <select id="d_page">
@@ -1179,7 +1252,9 @@ window.saveDoc = async function(){
     title,
     description: document.getElementById('d_desc').value.trim() || null,
     drive_file_id: extractDriveId(link),
-    page_id: document.getElementById('d_page').value || null
+    page_id: document.getElementById('d_page').value || null,
+    file_kind: document.getElementById('d_kind').value || 'pdf',
+    file_name: document.getElementById('d_fname').value || null
   };
   let error;
   if (editingDocId){
@@ -1214,6 +1289,15 @@ window.moveDoc = async function(id, dir){
 /* ================= PENGGUNA ================= */
 let USERS = [];
 
+/* kode peran, nama tampilan, keterangan singkat */
+const ROLE_OPTIONS = [
+  ['viewer',      'Viewer',      'masuk panel, hanya melihat'],
+  ['supporter',   'Supporter',   'seperti viewer, untuk fitur partisipasi'],
+  ['kontributor', 'Kontributor', 'mengelola konten & mengunggah berkas'],
+  ['admin',       'Admin',       'seluruhnya, termasuk tema & pengguna']
+];
+const ROLE_LABEL = Object.fromEntries(ROLE_OPTIONS.map(r => [r[0], r[1]]));
+
 async function loadUsers(){
   const { data, error } = await supabaseClient.from('profiles').select('*').order('username', { ascending: true });
   const body = document.getElementById('usersTableBody');
@@ -1225,9 +1309,7 @@ async function loadUsers(){
       <td><b>${esc(u.username || '—')}</b>${self ? ' <span class="badge on" style="margin-left:6px;">Anda</span>' : ''}</td>
       <td style="color:var(--slate); font-size:12.5px;">${esc(u.email || '')}</td>
       <td><select class="role-select" ${self ? 'disabled title="Peran akun sendiri tidak dapat diubah dari sini"' : ''} onchange="changeUserRole('${u.id}', this.value)">
-        <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
-        <option value="editor" ${u.role==='editor'?'selected':''}>Editor</option>
-        <option value="viewer" ${u.role==='viewer'?'selected':''}>Viewer</option>
+        ${ROLE_OPTIONS.map(r => `<option value="${r[0]}" ${u.role===r[0]?'selected':''}>${r[1]}</option>`).join('')}
       </select></td>
       <td style="color:var(--slate); font-size:12.5px;">${u.created_at ? new Date(u.created_at).toLocaleDateString('id-ID') : '-'}</td>
       <td>${self
@@ -1255,10 +1337,9 @@ function openUserForm(){
           <input type="text" id="u_pass" placeholder="minimal 6 karakter"></div>
         <div><label>Hak akses <span style="color:var(--rust);">(wajib)</span></label>
           <select id="u_role">
-            <option value="viewer">Viewer — hanya melihat</option>
-            <option value="editor">Editor — boleh mengubah konten</option>
-            <option value="admin">Admin — akses penuh</option>
-          </select></div>
+            ${ROLE_OPTIONS.map(r => `<option value="${r[0]}">${r[1]} — ${r[2]}</option>`).join('')}
+          </select>
+          <p class="rolehint">Pengunjung tanpa akun tetap dapat membaca seluruh situs dan mengganti tema, tanpa perlu didaftarkan di sini.</p></div>
       </div>
       <p class="hint">Nama User dipakai untuk masuk (boleh juga memakai email). Catat kata sandinya dan sampaikan kepada yang bersangkutan — kata sandi tidak dapat dilihat kembali setelah akun dibuat.</p>
       <div id="u_msg" class="auth-msg" style="position:static;"></div>
@@ -1522,7 +1603,34 @@ window.testDriveAuth = async function(){
 
 /* ---- Proses unggah ---- */
 const KIND_LABEL = { video:'Video', image:'Gambar', document:'Dokumen' };
-const KIND_ACCEPT = { video:'video/*', image:'image/*', document:'application/pdf' };
+const KIND_ACCEPT = { video:'video/*', image:'image/*', document:'' };
+
+/* ---- jenis berkas dokumen ---- */
+const FILE_KINDS = {
+  pdf:   { label:'PDF',  color:'#C4382E', name:'PDF',        ext:['pdf'] },
+  word:  { label:'DOC',  color:'#2B579A', name:'Word',       ext:['doc','docx','odt','rtf'] },
+  excel: { label:'XLS',  color:'#1D6F42', name:'Excel',      ext:['xls','xlsx','xlsm','csv','ods'] },
+  ppt:   { label:'PPT',  color:'#C0491B', name:'PowerPoint', ext:['ppt','pptx','odp'] },
+  other: { label:'FILE', color:'#667085', name:'Berkas',     ext:[] }
+};
+function kindFromName(name){
+  const ext = String(name || '').split('.').pop().toLowerCase();
+  for (const k of Object.keys(FILE_KINDS)){
+    if (FILE_KINDS[k].ext.includes(ext)) return k;
+  }
+  return 'other';
+}
+function bisaDitampilkan(kind){ return kind !== 'other'; }
+function icoHtml(kind, small){
+  const k = FILE_KINDS[kind] || FILE_KINDS.other;
+  return `<span class="fico${small ? ' sm' : ''}" style="background:${k.color}">${k.label}</span>`;
+}
+function driveViewUrl(fileId){
+  const id = String(fileId || '').trim();
+  if (/^https?:\/\//i.test(id) && !id.includes('drive.google.com')) return id;
+  const m = id.match(/[-\w]{25,}/);
+  return 'https://drive.google.com/file/d/' + encodeURIComponent(m ? m[0] : id) + '/view';
+}
 const KIND_FOLDER = { video:'drive_folder_video', image:'drive_folder_image', document:'drive_folder_document' };
 
 /* Membuka pemilih berkas, mengunggah, lalu mencatat ke pustaka.
@@ -1633,8 +1741,8 @@ function fillAccountInfo(){
   if (!currentProfile) return;
   document.getElementById('acctUsername').textContent = currentProfile.username || '—';
   document.getElementById('acctEmail').textContent = currentProfile.email || '—';
-  document.getElementById('acctRole').textContent =
-    ({admin:'Admin — akses penuh', editor:'Editor — boleh mengubah konten', viewer:'Viewer — hanya melihat'})[currentProfile.role] || currentProfile.role;
+  const r = ROLE_OPTIONS.find(x => x[0] === currentProfile.role);
+  document.getElementById('acctRole').textContent = r ? (r[1] + ' — ' + r[2]) : currentProfile.role;
 }
 
 function msgBox(id, text, type){
