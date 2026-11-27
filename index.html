@@ -70,6 +70,27 @@ img{max-width:100%;}
 .btn-admin{background:var(--deep);color:var(--on-deep);padding:9px 17px;border-radius:8px;
   font-size:13.5px;font-weight:600;text-decoration:none;white-space:nowrap;}
 .btn-admin:hover{background:var(--deep-soft);color:var(--on-deep);}
+button.btn-admin{border:none;cursor:pointer;font-family:inherit;line-height:1.3;}
+#panduanBtn{background:transparent;color:var(--deep);border:1px solid var(--line-ink);}
+#panduanBtn:hover{background:var(--tint-brand);color:var(--deep);}
+html[data-mode="dark"] #panduanBtn{color:var(--brand);border-color:var(--brand);background:transparent;}
+/* ---- penampil panduan ---- */
+.pd-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.62);z-index:9000;
+  display:none;align-items:center;justify-content:center;padding:24px;}
+.pd-overlay.show{display:flex;}
+.pd-box{background:var(--surface);border-radius:12px;width:min(980px,100%);
+  height:min(88vh,900px);display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 24px 60px rgba(0,0,0,0.3);}
+.pd-head{display:flex;align-items:center;gap:12px;padding:13px 18px;
+  border-bottom:1px solid var(--line-soft);flex:0 0 auto;}
+.pd-head b{font-size:15px;color:var(--ink);flex:1;}
+.pd-head a,.pd-head button{font-size:13px;padding:6px 12px;border-radius:6px;
+  border:1px solid var(--line-ink);background:var(--surface);color:var(--ink);
+  cursor:pointer;text-decoration:none;white-space:nowrap;font-family:inherit;}
+.pd-head button.x{border:none;font-size:20px;line-height:1;padding:3px 9px;}
+.pd-body{flex:1;min-height:0;background:var(--tint-slate);}
+.pd-body iframe{width:100%;height:100%;border:0;display:block;}
+@media (max-width:640px){.pd-overlay{padding:0;}.pd-box{height:100vh;border-radius:0;}}
 
 /* ================= HERO ================= */
 .hero{max-width:1200px;margin:0 auto;padding:60px 40px 52px;
@@ -376,7 +397,8 @@ html[data-mode="dark"] .pi.on .pn{color:#0C1A22;}
       <a class="nl" href="#video">Video</a>
       <a class="nl" href="#dokumen">Dokumen</a>
       <button class="iconbtn" id="modeBtn"><span data-icon>☾</span></button>
-      <a class="btn-admin" href="./admin.html">Masuk Admin</a>
+      <button class="btn-admin" id="panduanBtn" onclick="bukaPanduan()" style="display:none;">Panduan</button>
+      <a class="btn-admin" href="./admin.html">Masuk</a>
     </nav>
   </div>
 </header>
@@ -1030,6 +1052,7 @@ async function loadContent(){
     renderSections();
     renderHomeVideos();
     renderDocList();
+    aturTombolPanduan();
     handleRoute();
   } catch(err){
     console.error(err);
@@ -1039,6 +1062,51 @@ async function loadContent(){
 }
 
 loadContent();
+
+/* =========================================================
+   PENAMPIL PANDUAN — terbuka tanpa perlu login
+   ========================================================= */
+/* Panduan Viewer diunggah Admin ke Google Drive; ID-nya ada di site_settings.
+   Tombol disembunyikan selama Admin belum mengunggahnya. */
+function panduanId(){ return String(SETTINGS.panduan_viewer || '').trim(); }
+
+function aturTombolPanduan(){
+  const btn = document.getElementById('panduanBtn');
+  if (!btn) return;
+  const id = panduanId();
+  btn.style.display = id ? '' : 'none';
+  const buka = document.getElementById('pdOpen');
+  if (buka && id) buka.href = 'https://drive.google.com/file/d/' + id + '/view';
+}
+
+window.bukaPanduan = function(){
+  const id = panduanId();
+  if (!id) return;
+  document.getElementById('pdFrame').src = 'https://drive.google.com/file/d/' + id + '/preview';
+  document.getElementById('pdOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+};
+window.tutupPanduan = function(){
+  document.getElementById('pdOverlay').classList.remove('show');
+  document.getElementById('pdFrame').src = 'about:blank';
+  document.body.style.overflow = '';
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') window.tutupPanduan();
+});
 </script>
+
+<div class="pd-overlay" id="pdOverlay" onclick="if(event.target===this) tutupPanduan()">
+  <div class="pd-box">
+    <div class="pd-head">
+      <b>Panduan Pengunjung &amp; Viewer</b>
+      <a id="pdOpen" href="#" target="_blank" rel="noopener">Buka di tab baru</a>
+      <button class="x" onclick="tutupPanduan()" aria-label="Tutup">&times;</button>
+    </div>
+    <div class="pd-body">
+      <iframe id="pdFrame" title="Panduan pengunjung"></iframe>
+    </div>
+  </div>
+</div>
 </body>
 </html>

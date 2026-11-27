@@ -84,6 +84,43 @@
   .topbar h2{font-family:var(--font-display); font-size:19px; margin:0; font-weight:600;}
   .whoami{display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--slate);}
   .role-chip{font-family:var(--font-mono); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; padding:3px 9px; border-radius:20px; font-weight:600;}
+  /* ---- matriks hak akses ---- */
+  .akses-wrap{overflow-x:auto;}
+  table.akses{width:100%; border-collapse:collapse; font-size:13px; min-width:720px;}
+  table.akses th,table.akses td{border:1px solid var(--line-soft); padding:9px 8px; text-align:center;}
+  table.akses th{background:var(--tint-slate); font-weight:600; color:var(--ink); font-size:12px; line-height:1.3;}
+  table.akses th.rolecol,table.akses td.rolecol{text-align:left; white-space:nowrap; font-weight:600;}
+  table.akses tr.r-admin td{background:var(--tint-brass);}
+  table.akses input[type=checkbox]{width:17px; height:17px; cursor:pointer; accent-color:var(--brass);}
+  table.akses input[disabled]{cursor:not-allowed; opacity:0.85;}
+  table.akses td.kunci{background:var(--tint-slate); position:relative;}
+  table.akses tr.r-admin td.kunci{background:var(--tint-brass);}
+  table.akses td.kunci::after{content:'terkunci'; display:block; font-family:var(--font-mono);
+    font-size:8px; letter-spacing:0.06em; color:var(--slate); margin-top:2px;}
+  .akses-legend{margin-top:16px; font-size:13px; color:var(--slate); line-height:1.6;}
+  .akses-legend p{margin:0 0 6px;}
+  .akses-legend .lk{font-family:var(--font-mono); font-size:10px; letter-spacing:0.09em; color:var(--rust);}
+  /* ---- penampil panduan ---- */
+  .pd-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.62); z-index:9000;
+    display:none; align-items:center; justify-content:center; padding:24px;}
+  .pd-overlay.show{display:flex;}
+  .pd-box{background:var(--surface); border-radius:10px; width:min(980px,100%);
+    height:min(88vh,900px); display:flex; flex-direction:column; overflow:hidden;
+    box-shadow:0 24px 60px var(--shadow-lg);}
+  .pd-head{display:flex; align-items:center; gap:12px; padding:13px 18px;
+    border-bottom:1px solid var(--line-soft); flex:0 0 auto;}
+  .pd-head b{font-size:15px; color:var(--ink); flex:1;}
+  .pd-head a,.pd-head button{font-size:13px; padding:6px 12px; border-radius:5px;
+    border:1px solid var(--line-ink); background:var(--surface); color:var(--ink);
+    cursor:pointer; text-decoration:none; white-space:nowrap;}
+  .pd-head button.x{border:none; font-size:20px; line-height:1; padding:3px 9px;}
+  .pd-body{flex:1; min-height:0; background:var(--tint-slate);}
+  .pd-body iframe{width:100%; height:100%; border:0; display:block;}
+  .pd-fallback{padding:26px; font-size:14px; line-height:1.7; color:var(--slate);}
+  @media (max-width:640px){ .pd-overlay{padding:0;} .pd-box{height:100vh; border-radius:0;} }
+  .wajib{color:var(--rust); font-weight:600;}
+  .wajib-box{border:1px solid var(--rust); background:var(--tint-rust); border-radius:6px; padding:12px 14px; margin:12px 0; font-size:13px; line-height:1.6; color:var(--ink);}
+  .wajib-box b{color:var(--rust);}
   .role-admin{background:var(--tint-rust-2); color:var(--rust);}
   .role-kontributor{background:var(--line-soft); color:var(--brass);}
   .role-supporter{background:var(--tint-green); color:var(--green);}
@@ -313,6 +350,7 @@
     <button class="tabbtn" data-tab="tema" id="tabTemaBtn" style="display:none;">Tema Situs</button>
     <button class="tabbtn" data-tab="beranda" id="tabBerandaBtn" style="display:none;">Tampilan Beranda</button>
     <button class="tabbtn" data-tab="berkas" id="tabBerkasBtn" style="display:none;">Berkas &amp; Unggahan</button>
+    <button class="tabbtn" data-tab="akses" id="tabAksesBtn" style="display:none;">Hak Akses</button>
     <button class="tabbtn" data-tab="akun">Akun Saya</button>
     <div class="side-foot"><a href="./index.html" target="_blank">↗ Buka situs publik</a></div>
   </aside>
@@ -322,6 +360,7 @@
       <h2 id="panelTitle">Konten Perikop</h2>
       <div class="whoami">
         <button class="modebtn" id="modeBtn"><span data-icon>☾</span><span data-label>Gelap</span></button>
+        <button class="modebtn" id="panduanBtn" onclick="bukaPanduan()" style="display:none;">Panduan</button>
         <span id="whoamiEmail"></span>
         <span class="role-chip" id="whoamiRole"></span>
         <button class="btn-logout" id="logoutBtn">Keluar</button>
@@ -383,6 +422,16 @@
         <thead><tr><th>User</th><th>Email</th><th>Hak Akses</th><th>Bergabung</th><th>Aksi</th></tr></thead>
         <tbody id="usersTableBody"></tbody>
       </table>
+
+      <div class="form-box" style="margin-top:26px;">
+        <label style="margin-bottom:6px;">Panduan Pengguna (PDF)</label>
+        <p class="hint" style="margin-top:0;">Satu panduan untuk tiap peran. Setelah diunggah, tombol <b>Panduan</b> di bilah atas membukanya sebagai pop-up sesuai peran yang sedang masuk. Panduan <b>Viewer</b> juga dipakai tombol Panduan di situs publik, yang dapat dibuka <b>tanpa login</b>.</p>
+        <div class="wajib-box">
+          <b>Hanya Admin yang dapat mengunggah panduan.</b> Berkas masuk ke folder Dokumen di Google Drive, jadi pastikan pengaturan Google Drive sudah terisi lebih dulu. Peran yang panduannya belum diunggah tidak akan melihat tombol Panduan sama sekali.
+        </div>
+        <div id="panduan_msg"></div>
+        <table id="panduanTable"><thead><tr><th width="22%">Panduan untuk</th><th>Status</th><th width="30%">Aksi</th></tr></thead><tbody id="panduanBody"></tbody></table>
+      </div>
       <div class="note-box">
         <b>Mengganti kata sandi / email pengguna lain</b>
         <p>Demi keamanan, kata sandi dan email pengguna lain tidak dapat diubah langsung dari sini — hal itu memerlukan kunci rahasia database yang tidak boleh disimpan di dalam halaman web. Yang tersedia:</p>
@@ -403,6 +452,10 @@
     <!-- ===== BERKAS & UNGGAHAN ===== -->
     <div class="panel" id="panelBerkas" style="display:none;">
       <div id="gdriveStatus"></div>
+
+      <div class="wajib-box" id="driveConfigNote" style="display:none;">
+        <b>Pengaturan Google Drive hanya dapat diubah Admin.</b> Anda tetap dapat mengunggah berkas dan melihat Pustaka Berkas di bawah ini — berkas akan masuk ke folder yang sudah ditetapkan Admin.
+      </div>
 
       <div class="form-box" id="driveConfigBox">
         <label style="margin-bottom:10px;">Pengaturan Google Drive</label>
@@ -464,6 +517,24 @@
       <div id="assetList"><p class="empty-note">Memuat…</p></div>
     </div>
 
+    <!-- ===== HAK AKSES ===== -->
+    <div class="panel" id="panelAkses" style="display:none;">
+      <div class="panel-head">
+        <div>
+          <p class="hint" style="margin:0;">Menentukan menu mana yang terlihat oleh tiap peran. Centang yang dikunci tidak dapat diubah — lihat keterangan di bawah tabel.</p>
+        </div>
+        <button class="btn btn-primary" onclick="saveAkses()">Simpan Hak Akses</button>
+      </div>
+      <div id="akses_msg"></div>
+      <div class="akses-wrap"><table class="akses" id="aksesTable"></table></div>
+      <div class="akses-legend">
+        <p><b class="lk">TERKUNCI ·</b> <b>Baris Admin terkunci penuh.</b> Admin selalu memegang seluruh menu, supaya tidak ada yang bisa mengunci dirinya sendiri dan membuat portal tak terpulihkan.</p>
+        <p><b class="lk">TERKUNCI ·</b> <b>Kolom Akun Saya terkunci menyala</b> untuk semua peran — setiap orang harus bisa mengganti kata sandi dan emailnya sendiri.</p>
+        <p><b class="lk">TERKUNCI ·</b> <b>Kelola Pengguna dan Tema Situs terkunci mati</b> untuk non-admin. Ini bukan pilihan tampilan: kebijakan basis data menolak perubahannya dari peran selain admin, jadi menyalakannya hanya akan menghasilkan menu yang gagal menyimpan.</p>
+        <p style="margin-top:12px;">Catatan: di tab <b>Berkas &amp; Unggahan</b>, kotak <b>Pengaturan Google Drive</b> tetap hanya terlihat admin walaupun peran lain diberi akses ke tab itu. Yang mereka dapatkan adalah area unggah dan Pustaka Berkas.</p>
+      </div>
+    </div>
+
     <!-- ===== AKUN SAYA ===== -->
     <div class="panel" id="panelAkun" style="display:none;">
       <div class="acct-card">
@@ -490,14 +561,39 @@
 
       <div class="form-box">
         <label style="margin-bottom:10px;">Ganti Email</label>
+        <div class="wajib-box">
+          <b>Gunakan Akun Google.</b> Email sekarang: <b id="em_current">—</b><br>
+          Alamat <b>@gmail.com</b> langsung diterima. Alamat lain hanya dapat disimpan setelah Anda memastikan alamat itu sudah terdaftar sebagai Akun Google — karena alamat inilah yang akan dikenali rekan kerja, dan karena mengunggah berkas ke Google Drive mensyaratkan Akun Google.
+        </div>
         <div class="form-grid">
-          <div><label>Email baru</label><input type="text" id="em_new" placeholder="email.baru@perusahaan.co.id"></div>
+          <div><label>Email baru</label><input type="text" id="em_new" placeholder="nama.anda@gmail.com"></div>
           <div><label>Kata sandi saat ini</label><input type="password" id="em_pass" autocomplete="current-password"></div>
+        </div>
+        <div id="em_konfirmWrap" style="display:none; margin:-4px 0 10px;">
+          <label style="display:flex; gap:9px; align-items:flex-start; font-size:13px; font-weight:400; cursor:pointer; line-height:1.5;">
+            <input type="checkbox" id="em_konfirm" style="width:16px; height:16px; margin-top:2px; flex:0 0 16px; accent-color:var(--brass);">
+            <span>Alamat ini <b>bukan Gmail</b>. Saya memastikan alamat tersebut sudah terdaftar sebagai <b>Akun Google</b> (lewat <span style="font-family:var(--font-mono);">accounts.google.com/signup</span> → “Gunakan alamat email saya saat ini”).</span>
+          </label>
         </div>
         <p class="hint">Demi keamanan, Supabase akan mengirim tautan konfirmasi ke email baru (dan, bila pengaturan "Secure email change" aktif, juga ke email lama). Email baru berlaku setelah tautan tersebut diklik.</p>
         <div id="em_msg" class="auth-msg"></div>
         <div class="form-actions">
           <button class="btn btn-primary" id="em_save" onclick="changeOwnEmail()">Kirim Permintaan Ganti Email</button>
+        </div>
+      </div>
+
+      <div class="form-box" id="izinBox" style="display:none;">
+        <label style="margin-bottom:10px;">Izin Google untuk Mengunggah</label>
+        <div class="wajib-box">
+          <b>⚠ WAJIB sekali di awal.</b> Sebelum dapat mengunggah berkas, Anda harus memberi izin kepada portal satu kali.
+          Tekan tombol di bawah, lalu di jendela Google: pilih akun → kalau muncul layar
+          <b>“Google belum memverifikasi aplikasi ini”</b> klik tautan kecil <b class="wajib">Lanjutkan</b>
+          (<b>bukan</b> tombol biru “Kembali ke tempat aman”) → <b>Izinkan</b>.
+        </div>
+        <p class="hint" style="margin-top:0;">Cukup dilakukan sekali per browser. Tidak ada berkas yang diunggah saat menekan tombol ini — hanya memeriksa izin.</p>
+        <div id="izin_msg" class="auth-msg"></div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="testDriveAuthAkun()">Uji &amp; Beri Izin Google</button>
         </div>
       </div>
     </div>
@@ -594,10 +690,8 @@ async function loadProfileAndShowApp(user){
   ['bannerPerikop','bannerHalaman','bannerVideo','bannerDokumen'].forEach(id => {
     document.getElementById(id).style.display = editable ? 'none' : 'block';
   });
-  document.getElementById('tabPenggunaBtn').style.display = isAdmin() ? 'block' : 'none';
-  document.getElementById('tabTemaBtn').style.display = isAdmin() ? 'block' : 'none';
-  document.getElementById('tabBerandaBtn').style.display = isAdmin() ? 'block' : 'none';
-  document.getElementById('tabBerkasBtn').style.display = canEdit() ? 'block' : 'none';
+  await loadAkses();
+  terapkanAkses();
   document.getElementById('addUserBtn').style.display = isAdmin() ? 'inline-block' : 'none';
 
   fillAccountInfo();
@@ -605,13 +699,144 @@ async function loadProfileAndShowApp(user){
     if (themeState) renderThemeEditor();
   });
   await refreshAll();
-  if (canEdit()){ await loadDriveConfig(); await loadAssets(); await loadHero(); }
+  if (bolehTab('berkas')){ await loadDriveConfig(); await loadAssets(); }
+  if (bolehTab('beranda')){ await loadHero(); }
+  await loadPanduan();
   if (isAdmin()){
     loadUsers();
+    renderAkses();
+    renderPanduanAdmin();
     themeState = await window.loadTheme(supabaseClient);
     renderThemeEditor();
   }
 }
+
+/* =========================================================
+   MATRIKS HAK AKSES
+   ========================================================= */
+const MENU_AKSES = [
+  ['perikop',  'Konten<br>Perikop'],
+  ['halaman',  'Konten<br>Halaman'],
+  ['video',    'Video &amp;<br>Playlist'],
+  ['dokumen',  'Dokumen<br>Referensi'],
+  ['pengguna', 'Kelola<br>Pengguna'],
+  ['tema',     'Tema<br>Situs'],
+  ['beranda',  'Tampilan<br>Beranda'],
+  ['berkas',   'Berkas &amp;<br>Unggahan'],
+  ['akun',     'Akun<br>Saya']
+];
+/* Menu yang basis datanya memang menolak peran selain admin. */
+const HANYA_ADMIN = ['pengguna','tema'];
+/* Menu yang wajib dimiliki semua peran. */
+const WAJIB_SEMUA = ['akun'];
+
+const AKSES_BAWAAN = {
+  admin:       {perikop:1,halaman:1,video:1,dokumen:1,pengguna:1,tema:1,beranda:1,berkas:1,akun:1},
+  kontributor: {perikop:1,halaman:1,video:1,dokumen:1,pengguna:0,tema:0,beranda:1,berkas:1,akun:1},
+  supporter:   {perikop:0,halaman:0,video:0,dokumen:0,pengguna:0,tema:0,beranda:0,berkas:0,akun:1},
+  viewer:      {perikop:0,halaman:0,video:0,dokumen:0,pengguna:0,tema:0,beranda:0,berkas:0,akun:1}
+};
+let AKSES = JSON.parse(JSON.stringify(AKSES_BAWAAN));
+
+/* Aturan yang tidak boleh dilanggar, apa pun isi tabel. */
+function rapikanAkses(a){
+  const out = JSON.parse(JSON.stringify(AKSES_BAWAAN));
+  ROLE_OPTIONS.forEach(([r]) => {
+    const src = (a && a[r]) ? a[r] : AKSES_BAWAAN[r];
+    MENU_AKSES.forEach(([k]) => {
+      let v = src[k] ? 1 : 0;
+      if (r === 'admin') v = 1;                        // admin selalu penuh
+      if (WAJIB_SEMUA.includes(k)) v = 1;              // Akun Saya wajib
+      if (r !== 'admin' && HANYA_ADMIN.includes(k)) v = 0;
+      out[r][k] = v;
+    });
+  });
+  return out;
+}
+
+function terkunci(role, menu){
+  return role === 'admin'
+      || WAJIB_SEMUA.includes(menu)
+      || HANYA_ADMIN.includes(menu);
+}
+
+async function loadAkses(){
+  try{
+    const { data } = await supabaseClient.from('site_settings')
+      .select('value').eq('key','role_access').maybeSingle();
+    if (data && data.value) AKSES = rapikanAkses(JSON.parse(data.value));
+    else AKSES = rapikanAkses(null);
+  } catch(e){ AKSES = rapikanAkses(null); }
+}
+
+function bolehTab(menu){
+  const r = (currentProfile && currentProfile.role) || 'viewer';
+  if (r === 'admin') return true;
+  return !!(AKSES[r] && AKSES[r][menu]);
+}
+
+const TAB_BTN = {
+  perikop:'tabPerikopBtn', halaman:'tabHalamanBtn', video:'tabVideoBtn',
+  dokumen:'tabDokumenBtn', pengguna:'tabPenggunaBtn', tema:'tabTemaBtn',
+  beranda:'tabBerandaBtn', berkas:'tabBerkasBtn', akun:'tabAkunBtn'
+};
+
+function terapkanAkses(){
+  MENU_AKSES.forEach(([k]) => {
+    const btn = document.querySelector('[data-tab="' + k + '"]');
+    if (btn) btn.style.display = bolehTab(k) ? 'block' : 'none';
+  });
+  const aks = document.getElementById('tabAksesBtn');
+  if (aks) aks.style.display = isAdmin() ? 'block' : 'none';
+  /* Pengaturan Google Drive tetap admin-only walau tab Berkas terbuka. */
+  const cfg = document.getElementById('driveConfigBox');
+  if (cfg) cfg.style.display = isAdmin() ? '' : 'none';
+  const cfgNote = document.getElementById('driveConfigNote');
+  if (cfgNote) cfgNote.style.display = isAdmin() ? 'none' : '';
+  /* Kalau tab yang sedang terbuka ternyata tidak diizinkan, pindah ke Akun Saya. */
+  const aktif = document.querySelector('.tabbtn.active');
+  if (aktif && aktif.style.display === 'none'){
+    const pertama = Array.from(document.querySelectorAll('.tabbtn'))
+      .find(b => b.style.display !== 'none');
+    if (pertama) pertama.click();
+  }
+}
+
+function renderAkses(){
+  const tb = document.getElementById('aksesTable');
+  if (!tb) return;
+  let head = '<tr><th class="rolecol">Peran</th>';
+  MENU_AKSES.forEach(([k, label]) => { head += '<th>' + label + '</th>'; });
+  head += '</tr>';
+  let body = '';
+  ROLE_OPTIONS.forEach(([r, nama]) => {
+    body += '<tr class="r-' + r + '"><td class="rolecol">' + esc(nama) + '</td>';
+    MENU_AKSES.forEach(([k]) => {
+      const on = AKSES[r][k] ? 'checked' : '';
+      const lock = terkunci(r, k) ? 'disabled' : '';
+      const mark = terkunci(r, k) ? ' title="Terkunci — tidak dapat diubah"' : '';
+      const tdc = terkunci(r, k) ? ' class="kunci"' : '';
+      body += '<td' + tdc + '><input type="checkbox" data-r="' + r + '" data-k="' + k + '" ' + on + ' ' + lock + mark + '></td>';
+    });
+    body += '</tr>';
+  });
+  tb.innerHTML = head + body;
+}
+
+window.saveAkses = async function(){
+  const baru = JSON.parse(JSON.stringify(AKSES));
+  document.querySelectorAll('#aksesTable input[type=checkbox]').forEach(cb => {
+    baru[cb.dataset.r][cb.dataset.k] = cb.checked ? 1 : 0;
+  });
+  const bersih = rapikanAkses(baru);
+  const { error } = await supabaseClient.from('site_settings')
+    .upsert({ key:'role_access', value: JSON.stringify(bersih) }, { onConflict:'key' });
+  if (error){ msgBox('akses_msg', error.message, 'error'); return; }
+  AKSES = bersih;
+  renderAkses();
+  terapkanAkses();
+  msgBox('akses_msg', 'Hak akses tersimpan. Pengguna lain melihat perubahannya saat mereka memuat ulang panel.', 'ok');
+};
 
 async function refreshAll(){
   const [s, p, v, d] = await Promise.all([
@@ -625,8 +850,8 @@ async function refreshAll(){
 }
 
 /* ================= TAB ================= */
-const PANELS = { perikop:'panelPerikop', halaman:'panelHalaman', video:'panelVideo', dokumen:'panelDokumen', pengguna:'panelPengguna', tema:'panelTema', beranda:'panelBeranda', berkas:'panelBerkas', akun:'panelAkun' };
-const TITLES = { perikop:'Konten Perikop', halaman:'Konten Halaman', video:'Video & Playlist', dokumen:'Dokumen Referensi', pengguna:'Kelola Pengguna', tema:'Tema Situs', beranda:'Tampilan Beranda', berkas:'Berkas & Unggahan', akun:'Akun Saya' };
+const PANELS = { perikop:'panelPerikop', halaman:'panelHalaman', video:'panelVideo', dokumen:'panelDokumen', pengguna:'panelPengguna', tema:'panelTema', beranda:'panelBeranda', berkas:'panelBerkas', akses:'panelAkses', akun:'panelAkun' };
+const TITLES = { perikop:'Konten Perikop', halaman:'Konten Halaman', video:'Video & Playlist', dokumen:'Dokumen Referensi', pengguna:'Kelola Pengguna', tema:'Tema Situs', beranda:'Tampilan Beranda', berkas:'Berkas & Unggahan', akses:'Hak Akses', akun:'Akun Saya' };
 document.querySelectorAll('.tabbtn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tabbtn').forEach(b => b.classList.remove('active'));
@@ -1743,7 +1968,40 @@ function fillAccountInfo(){
   document.getElementById('acctEmail').textContent = currentProfile.email || '—';
   const r = ROLE_OPTIONS.find(x => x[0] === currentProfile.role);
   document.getElementById('acctRole').textContent = r ? (r[1] + ' — ' + r[2]) : currentProfile.role;
+  const cur = document.getElementById('em_current');
+  if (cur) cur.textContent = currentProfile.email || '—';
+  /* Kotak izin Google hanya berguna bagi yang boleh mengunggah. */
+  const izin = document.getElementById('izinBox');
+  if (izin) izin.style.display = canEdit() ? '' : 'none';
+  const em = document.getElementById('em_new');
+  if (em && !em.dataset.bound){
+    em.dataset.bound = '1';
+    em.addEventListener('input', cekEmailGoogle);
+  }
 }
+
+/* @gmail.com langsung diterima; alamat lain perlu konfirmasi. */
+function emailGmail(e){
+  return /@(gmail|googlemail)\.com$/i.test(String(e || '').trim());
+}
+function cekEmailGoogle(){
+  const v = document.getElementById('em_new').value.trim();
+  const wrap = document.getElementById('em_konfirmWrap');
+  if (!wrap) return;
+  const perlu = v.includes('@') && !emailGmail(v);
+  wrap.style.display = perlu ? '' : 'none';
+  if (!perlu) document.getElementById('em_konfirm').checked = false;
+}
+
+window.testDriveAuthAkun = async function(){
+  try{
+    await window.GDrive.getToken();
+    msgBox('izin_msg', 'Izin Google berhasil diberikan. Anda sudah dapat mengunggah berkas.', 'ok');
+  } catch(err){
+    msgBox('izin_msg', (err.message || 'Gagal memperoleh izin Google.') +
+      ' — Pastikan Admin sudah mengisi Client ID, dan email Anda sudah didaftarkan sebagai Test user.', 'error');
+  }
+};
 
 function msgBox(id, text, type){
   const el = document.getElementById(id);
@@ -1792,6 +2050,14 @@ window.changeOwnEmail = async function(){
   if (!newEmail.includes('@') || newEmail.length < 5){ msgBox('em_msg','Format email tidak valid.','error'); return; }
   if (newEmail.toLowerCase() === String(currentProfile.email || '').toLowerCase()){
     msgBox('em_msg','Email baru sama dengan email saat ini.','error'); return;
+  }
+  if (!emailGmail(newEmail)){
+    const ok = document.getElementById('em_konfirm');
+    if (!ok || !ok.checked){
+      msgBox('em_msg','Alamat ini bukan Gmail. Centang dulu pernyataan bahwa alamat tersebut sudah terdaftar sebagai Akun Google, atau gunakan alamat @gmail.com.','error');
+      cekEmailGoogle();
+      return;
+    }
   }
 
   btn.disabled = true; btn.textContent = 'Memproses…';
@@ -1991,6 +2257,111 @@ document.getElementById('addUserBtn').addEventListener('click', openUserForm);
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (session && session.user) await loadProfileAndShowApp(session.user);
 })();
+
+/* =========================================================
+   PENAMPIL PANDUAN (PDF dalam pop-up, tanpa perlu diunduh)
+   ========================================================= */
+/* ID berkas Drive tiap panduan, diisi Admin lewat Kelola Pengguna. */
+const PANDUAN_KEY = {
+  admin:'panduan_admin', kontributor:'panduan_kontributor',
+  supporter:'panduan_supporter', viewer:'panduan_viewer'
+};
+let PANDUAN = { admin:'', kontributor:'', supporter:'', viewer:'' };
+
+async function loadPanduan(){
+  try{
+    const { data } = await supabaseClient.from('site_settings')
+      .select('key,value').in('key', Object.values(PANDUAN_KEY));
+    (data || []).forEach(r => {
+      const peran = Object.keys(PANDUAN_KEY).find(p => PANDUAN_KEY[p] === r.key);
+      if (peran) PANDUAN[peran] = (r.value || '').trim();
+    });
+  } catch(e){ /* biarkan kosong */ }
+  const btn = document.getElementById('panduanBtn');
+  const peran = (currentProfile && currentProfile.role) || 'viewer';
+  if (btn) btn.style.display = PANDUAN[peran] ? '' : 'none';
+}
+
+function renderPanduanAdmin(){
+  const tb = document.getElementById('panduanBody');
+  if (!tb) return;
+  tb.innerHTML = ROLE_OPTIONS.map(([r, nama]) => {
+    const id = PANDUAN[r];
+    const status = id
+      ? '<span style="color:var(--green);font-weight:600;">Sudah diunggah</span>'
+      : '<span style="color:var(--slate);">Belum ada — tombol Panduan disembunyikan</span>';
+    const lihat = id
+      ? ' <a class="btn btn-secondary" style="padding:5px 11px;font-size:12px;" href="' +
+        driveViewUrl(id) + '" target="_blank" rel="noopener">Lihat</a>' +
+        ' <button class="btn btn-secondary" style="padding:5px 11px;font-size:12px;" onclick="hapusPanduan(\'' + r + '\')">Hapus</button>'
+      : '';
+    return '<tr><td><b>' + esc(nama) + '</b></td><td>' + status + '</td>' +
+      '<td><button class="btn btn-secondary" style="padding:5px 11px;font-size:12px;" onclick="unggahPanduan(\'' + r + '\')">&uarr; Unggah</button>' + lihat + '</td></tr>';
+  }).join('');
+}
+
+async function simpanPanduan(peran, fileId){
+  const { error } = await supabaseClient.from('site_settings')
+    .upsert({ key: PANDUAN_KEY[peran], value: fileId }, { onConflict:'key' });
+  if (error){ msgBox('panduan_msg', error.message, 'error'); return false; }
+  PANDUAN[peran] = fileId;
+  renderPanduanAdmin();
+  const btn = document.getElementById('panduanBtn');
+  const saya = (currentProfile && currentProfile.role) || 'viewer';
+  if (btn) btn.style.display = PANDUAN[saya] ? '' : 'none';
+  return true;
+}
+
+window.unggahPanduan = function(peran){
+  if (!DRIVE_CFG || !DRIVE_CFG.google_client_id){
+    msgBox('panduan_msg','Isi dulu Pengaturan Google Drive di tab Berkas & Unggahan.','error');
+    return;
+  }
+  msgBox('panduan_msg','Mengunggah…','ok');
+  window.uploadFor('document', async a => {
+    const ok = await simpanPanduan(peran, a.drive_file_id);
+    if (ok) msgBox('panduan_msg','Panduan ' + peran + ' berhasil diunggah.','ok');
+  });
+};
+
+window.hapusPanduan = async function(peran){
+  if (!confirm('Lepas panduan untuk peran ' + peran + '? Tombol Panduan akan disembunyikan bagi peran itu. Berkasnya tetap ada di Google Drive.')) return;
+  const ok = await simpanPanduan(peran, '');
+  if (ok) msgBox('panduan_msg','Panduan ' + peran + ' dilepas.','ok');
+};
+
+window.bukaPanduan = function(){
+  const role = (currentProfile && currentProfile.role) || 'viewer';
+  const id = PANDUAN[role];
+  if (!id){ alert('Panduan untuk peran Anda belum diunggah oleh Admin.'); return; }
+  const nama = (ROLE_OPTIONS.find(x => x[0] === role) || [,'Pengguna'])[1];
+  document.getElementById('pdTitle').textContent = 'Panduan ' + nama;
+  document.getElementById('pdOpen').href = driveViewUrl(id);
+  document.getElementById('pdFrame').src = 'https://drive.google.com/file/d/' + id + '/preview';
+  document.getElementById('pdOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+};
+window.tutupPanduan = function(){
+  document.getElementById('pdOverlay').classList.remove('show');
+  document.getElementById('pdFrame').src = 'about:blank';
+  document.body.style.overflow = '';
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') window.tutupPanduan();
+});
 </script>
+
+<div class="pd-overlay" id="pdOverlay" onclick="if(event.target===this) tutupPanduan()">
+  <div class="pd-box">
+    <div class="pd-head">
+      <b id="pdTitle">Panduan</b>
+      <a id="pdOpen" href="#" target="_blank" rel="noopener">Buka di tab baru</a>
+      <button class="x" onclick="tutupPanduan()" aria-label="Tutup">&times;</button>
+    </div>
+    <div class="pd-body">
+      <iframe id="pdFrame" title="Panduan pengguna"></iframe>
+    </div>
+  </div>
+</div>
 </body>
 </html>
