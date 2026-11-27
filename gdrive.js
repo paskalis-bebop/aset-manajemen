@@ -28,6 +28,14 @@ window.GDrive = {
     }
   },
 
+  /* Apakah token yang masih berlaku sudah ada di tangan?
+     Dipakai untuk memastikan jendela izin Google hanya dibuka dari
+     klik langsung — browser memblokir pop-up yang dibuka dari
+     peristiwa "change" pemilih berkas. */
+  hasToken(){
+    return !!(this._token && Date.now() < this._expiry - 60000);
+  },
+
   /* Meminta izin akses (menampilkan jendela login Google bila perlu) */
   getToken(){
     return new Promise((resolve, reject) => {

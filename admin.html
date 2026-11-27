@@ -479,6 +479,11 @@
 
       <div class="form-box">
         <label style="margin-bottom:10px;">Unggah Berkas Baru</label>
+        <div class="wajib-box" style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+          <span style="flex:1; min-width:280px;"><b>Pertama kali mengunggah hari ini?</b> Tekan tombol di samping lebih dulu. Browser memblokir jendela izin Google bila dibuka setelah pemilih berkas, jadi izinnya diambil dari klik tombol ini. Berlaku sekitar satu jam.</span>
+          <button class="btn btn-primary" style="white-space:nowrap;" onclick="testDriveAuthAkun()">Beri Izin Google</button>
+        </div>
+        <div id="izin_msg2" class="auth-msg"></div>
         <div class="upload-grid">
           <div class="up-zone" data-kind="video">
             <span class="up-icon">▶</span>
@@ -1861,6 +1866,19 @@ const KIND_FOLDER = { video:'drive_folder_video', image:'drive_folder_image', do
 /* Membuka pemilih berkas, mengunggah, lalu mencatat ke pustaka.
    onDone(asset) opsional — dipakai form video/dokumen/gambar. */
 window.uploadFor = function(kind, onDone){
+  /* Jendela izin Google hanya boleh dibuka dari klik langsung. Kalau izin
+     belum dikantongi, minta sekarang — pemilih berkas menyusul pada klik
+     berikutnya, karena peristiwa "change" tidak dihitung sebagai klik oleh
+     browser dan pop-upnya akan diblokir. */
+  if (!window.GDrive.hasToken()){
+    window.GDrive.getToken().then(() => {
+      alert('Izin Google berhasil diberikan.\n\nSilakan klik tombol Unggah sekali lagi untuk memilih berkas. Izin ini berlaku sekitar satu jam, jadi unggahan berikutnya langsung membuka pemilih berkas.');
+    }).catch(err => {
+      alert('Izin Google diperlukan sebelum mengunggah.\n\n' + (err.message || '') +
+            '\n\nPastikan Admin sudah mengisi Client ID, dan email Anda terdaftar sebagai Test user di Google Cloud.');
+    });
+    return;
+  }
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = KIND_ACCEPT[kind] || '*/*';
@@ -1994,11 +2012,14 @@ function cekEmailGoogle(){
 }
 
 window.testDriveAuthAkun = async function(){
+  const tulis = (teks, jenis) => ['izin_msg','izin_msg2'].forEach(id => {
+    if (document.getElementById(id)) msgBox(id, teks, jenis);
+  });
   try{
     await window.GDrive.getToken();
-    msgBox('izin_msg', 'Izin Google berhasil diberikan. Anda sudah dapat mengunggah berkas.', 'ok');
+    tulis('Izin Google berhasil diberikan. Anda sudah dapat mengunggah berkas selama sekitar satu jam ke depan.', 'ok');
   } catch(err){
-    msgBox('izin_msg', (err.message || 'Gagal memperoleh izin Google.') +
+    tulis((err.message || 'Gagal memperoleh izin Google.') +
       ' — Pastikan Admin sudah mengisi Client ID, dan email Anda sudah didaftarkan sebagai Test user.', 'error');
   }
 };
@@ -2317,7 +2338,11 @@ window.unggahPanduan = function(peran){
     msgBox('panduan_msg','Isi dulu Pengaturan Google Drive di tab Berkas & Unggahan.','error');
     return;
   }
-  msgBox('panduan_msg','Mengunggah…','ok');
+  if (!window.GDrive.hasToken()){
+    msgBox('panduan_msg','Izin Google belum ada. Jendela izin akan terbuka — setelah selesai, klik Unggah sekali lagi.','error');
+  } else {
+    msgBox('panduan_msg','Mengunggah…','ok');
+  }
   window.uploadFor('document', async a => {
     const ok = await simpanPanduan(peran, a.drive_file_id);
     if (ok) msgBox('panduan_msg','Panduan ' + peran + ' berhasil diunggah.','ok');
